@@ -1,46 +1,100 @@
 import { Schema, model } from 'mongoose';
-import { IImage, IUser } from '@/types';
+import { IUser } from '@/types';
 
 const UserSchema = new Schema<IUser>(
     {
-        email: {
-            type: String,
-            required: false,
-            unique: false,
-        },
-        phone: {
-            type: String,
-            required: false,
-            unique: false,
-        },
-        score: {
-            type: Number,
-            required: false,
-            default: 0,
-        },
         name: {
             type: String,
             required: true,
             trim: true,
         },
+        email: {
+            type: String,
+            required() {
+                return !this.phone;
+            },
+            unique: true,
+            lowercase: true,
+            trim: true,
+        },
+        phone: {
+            type: String,
+            required() {
+                return !this.email;
+            },
+            unique: true,
+            trim: true,
+        },
         password: {
             type: String,
-            required: false,
+            required: true,
             trim: true,
             select: false,
+        },
+        role: {
+            type: String,
+            enum: ['ADMIN', 'USER', 'CONTRACTOR', 'GOVERNMENT'],
+            default: 'USER',
+        },
+        photo: {
+            type: Schema.Types.ObjectId,
+            ref: 'Image',
+        },
+        isVerified: {
+            type: Boolean,
+            default: false,
+        },
+        lastLogin: {
+            type: Date,
+        },
+        resetPasswordToken: {
+            type: String,
+            select: false,
+        },
+        resetPasswordExpires: {
+            type: Date,
+            select: false,
+        },
+
+        governmentId: {
+            type: String,
+            required() {
+                return this.role === 'GOVERNMENT';
+            },
+            unique: true,
+            sparse: true,
+        },
+        designation: {
+            type: String,
+        },
+        department: {
+            type: String,
+        },
+        contractorLicense: {
+            type: String,
+            required() {
+                return this.role === 'CONTRACTOR';
+            },
+            unique: true,
+            sparse: true,
+        },
+        contributions: {
+            type: Number,
+            default: 0,
+        },
+        experience: {
+            type: Number,
+            default: 0,
+        },
+        reputationScore: {
+            type: Number,
+            default: 0,
         },
     },
     {
         timestamps: true,
-        id: true,
-        toJSON: {
-            virtuals: true,
-            getters: true,
-        },
-        toObject: {
-            virtuals: true,
-            getters: true,
-        },
+        toJSON: { virtuals: true, getters: true },
+        toObject: { virtuals: true, getters: true },
     }
 );
 

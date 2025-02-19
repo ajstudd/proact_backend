@@ -2,18 +2,39 @@ import { ObjectId, PopulatedDoc } from 'mongoose';
 import { IImage } from './image.types';
 import { RolesEnum } from './role.types';
 
-export interface IUser {
+const roleCode = {
+    ADMIN: 'ADMIN',
+    USER: 'USER',
+    CONTRACTOR: 'CONTRACTOR',
+    GOVERNMENT: 'GOVERNMENT',
+} as const;
+
+export type RoleCode = keyof typeof roleCode;
+
+export interface IUser extends Document {
     _id: ObjectId;
     id: string;
-    phone: string;
-    score: number;
-    lastCheckIn: Date;
     name: string;
+    phone: string;
     email: string;
-    role: 'ADMIN' | 'USER';
+    role: RoleCode;
     password?: string;
     photo?: PopulatedDoc<IImage>;
+    isVerified: boolean;
+    lastLogin?: Date;
+    resetPasswordToken?: string;
+    resetPasswordExpires?: Date;
+    governmentId?: string;
+    designation?: string;
+    department?: string;
+    contractorLicense?: string;
+    contributions: number;
+    experience: number;
+    reputationScore?: number;
+    createdAt: Date;
+    updatedAt: Date;
 }
+
 export interface IMention {
     userId: string | ObjectId;
     name: string;
@@ -55,7 +76,7 @@ export interface IRequestUser {
 
 export type RegisterUserPayload = Pick<
     IUser,
-    'email' | 'name' | 'phone' | 'password'
+    'email' | 'name' | 'phone' | 'password' | 'role'
 >;
 
 export type UpdateUserPayload = Partial<Omit<IUser, 'id' | '_id' | 'photo'>> & {

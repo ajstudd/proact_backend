@@ -11,6 +11,9 @@ const register = Joi.object<RegisterUserPayload>({
     email: Joi.string().email().optional(),
     name: Joi.string().required(),
     password: Joi.string().required(),
+    role: Joi.string()
+        .valid('ADMIN', 'USER', 'CONTRACTOR', 'GOVERNMENT')
+        .default('USER'),
 });
 
 const update = Joi.object<UpdateUserPayload>({

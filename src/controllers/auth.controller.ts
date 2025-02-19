@@ -10,10 +10,10 @@ const login = async (
     const { email = null, password = null } = req.body;
 
     if (email && password) {
-        const token = await authService.loginWithPassword(email, password);
+        const resp = await authService.loginWithPassword(email, password);
         return res.status(200).json({
             message: 'Login successful!',
-            token,
+            resp,
         });
     } else {
         return res.status(400).json({
@@ -34,12 +34,19 @@ const register = async (
     req: Request<object, object, RegisterUserPayload>,
     res: Response
 ) => {
-    const { email = undefined, name, password, phone = undefined } = req.body;
+    const {
+        email = undefined,
+        name,
+        password,
+        phone = undefined,
+        role,
+    } = req.body;
     await userService.createUser({
         email,
         phone,
         name,
         password,
+        role,
     });
     return res.status(200).json({
         message: `Registration successful!`,
