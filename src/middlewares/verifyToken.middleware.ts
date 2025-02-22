@@ -1,6 +1,7 @@
+/* eslint-disable prettier/prettier */
 import { RequestHandler } from 'express';
-import { HttpError } from '../helpers/HttpError';
 import jwt from 'jsonwebtoken';
+import { HttpError } from '../helpers/HttpError';
 import { AuthToken, IRequestUser } from '../types';
 import userService from '../services/user.service';
 
@@ -20,64 +21,73 @@ declare global {
 }
 
 export const verifyToken = (
-    options: TokenVerificationOptions = {
-        strict: true,
-        resetToken: false,
-    }
+    options: TokenVerificationOptions = { strict: true }
 ): RequestHandler => {
     return async (req, res, next) => {
+        console.log('🔍 [verifyToken] Middleware triggered.');
+
         try {
-            req.strictTokenCheck = options.strict;
-            const token = req.headers.authorization
-                ?.replace('Bearer', '')
-                .trim();
-            if (!token) {
-                if (!options.strict) {
-                    return next();
+            // Step 1: Extract token from headers
+            const authHeader = req.headers.authorization;
+            if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                console.warn(
+                    '⚠️ [verifyToken] No valid Authorization header found.'
+                );
+
+                if (options.strict) {
+                    return res
+                        .status(401)
+                        .json({ message: 'Unauthorized: Token required' });
+                } else {
+                    return next(); // Allow request to proceed if strict mode is disabled
                 }
-                throw new HttpError({
-                    code: 401,
-                    message: 'Unauthorized',
-                });
             }
-            const { id, reset = false } = jwt.verify(
-                token,
-                process.env.JWT_TOKEN_SECRET!
-            ) as unknown as AuthToken;
 
-            const user = await userService.getUserById(id);
+            const token = authHeader.split(' ')[1].trim();
+            console.log('🔍 [verifyToken] Extracted Token:', token);
 
+            // Step 2: Verify and decode token
+            let decoded: AuthToken;
+            try {
+                const secret = process.env.JWT_TOKEN_SECRET;
+                if (!secret) {
+                    throw new Error('JWT_TOKEN_SECRET is not defined');
+                }
+                decoded = jwt.verify(token, secret) as unknown as AuthToken;
+            } catch (err) {
+                console.error('❌ [verifyToken] JWT verification failed:', err);
+                return res
+                    .status(401)
+                    .json({ message: 'Unauthorized: Invalid token' });
+            }
+
+            console.log('✅ [verifyToken] Token decoded. User ID:', decoded.id);
+
+            // Step 3: Fetch user from database
+            const user = await userService.getUserById(decoded.id);
             if (!user) {
-                throw new HttpError({
-                    code: 401,
-                    message: 'Unauthorized',
-                });
+                console.error('❌ [verifyToken] User not found in database.');
+                return res
+                    .status(401)
+                    .json({ message: 'Unauthorized: User does not exist' });
             }
 
-            if (
-                (reset && !options.resetToken) ||
-                (!reset && options.resetToken)
-            ) {
-                throw new HttpError({
-                    code: 401,
-                    message: 'Unauthorized',
-                });
-            }
+            console.log('✅ [verifyToken] User found:', user.email);
 
+            // Step 4: Attach user data to request object
             req.user = {
                 id: user._id.toString(),
                 email: user.email,
                 name: user.name,
+                password: user.password ?? '',
                 phone: user.phone,
-                password: user.password || '',
+                role: user.role,
             };
-            return next();
-        } catch (err) {
-            console.log(err);
-            return res.status(401).json({
-                code: 401,
-                message: 'Unauthorized',
-            });
+
+            next(); // Proceed to the next middleware or route
+        } catch (error) {
+            console.error('❌ [verifyToken] Unexpected error:', error);
+            return res.status(500).json({ message: 'Internal server error' });
         }
     };
 };

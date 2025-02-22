@@ -9,8 +9,7 @@ const roleCode = {
     GOVERNMENT: 'GOVERNMENT',
 } as const;
 
-export type RoleCode = keyof typeof roleCode;
-
+export type RoleCode = keyof typeof roleCode; // "ADMIN" | "USER" | "CONTRACTOR" | "GOVERNMENT"
 export interface IUser extends Document {
     _id: ObjectId;
     id: string;
@@ -71,6 +70,8 @@ export interface IRequestUser {
     email: string;
     phone: string;
     name: string;
+    // add enum for role
+    role: RolesEnum;
     password: string;
 }
 

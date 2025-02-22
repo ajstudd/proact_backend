@@ -3,15 +3,8 @@ import nodemailer from 'nodemailer';
 
 let trnasporter: nodemailer.Transporter;
 
-const sendOtpMail = (to: string, otp: string) => {
-    const template = [`Your OTP is: ${otp}`].join('\n');
-
-    return trnasporter.sendMail({
-        from: process.env.NODEMAILER_FROM,
-        to,
-        subject: `intelligram OTP`,
-        text: template,
-    });
+const sendOtpMail = (mail: { to: string; subject: string; text: string }) => {
+    return trnasporter.sendMail(mail);
 };
 
 const sendQuoteMail = (to: string, data: any) => {
