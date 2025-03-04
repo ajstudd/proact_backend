@@ -1,31 +1,16 @@
 import { Schema, model } from 'mongoose';
-import { IComment, IImage, IPostComment, IUser } from '@/types';
 
-const CommentSchema = new Schema<IPostComment>(
+const CommentSchema = new Schema(
     {
-        ownerId: {
-            type: String,
-            required: false,
-            unique: false,
+        project: {
+            type: Schema.Types.ObjectId,
+            ref: 'Project',
+            required: true,
         },
-        content: {
-            type: String,
-            required: false,
-            unique: false,
-        },
+        user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        content: { type: String, required: true },
     },
-    {
-        timestamps: true,
-        id: true,
-        toJSON: {
-            virtuals: true,
-            getters: true,
-        },
-        toObject: {
-            virtuals: true,
-            getters: true,
-        },
-    }
+    { timestamps: true }
 );
 
-export default model<IUser>('Comment', CommentSchema, 'comments');
+export default model('Comment', CommentSchema);
