@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { getGFS } from '../configs/db';
-
+import mongoose from 'mongoose';
+import conn from '../configs/db';
 
 export const uploadFile = async (req: Request, res: Response) => {
     try {
@@ -13,21 +13,72 @@ export const uploadFile = async (req: Request, res: Response) => {
     }
 };
 
-
 export const getFile = async (req: Request, res: Response) => {
     try {
-        const gfs = getGFS();
-        if (!gfs) return res.status(500).json({ message: 'GridFS not initialized' });
+        const { filename } = req.params;
 
-        gfs.files.findOne({ filename: req.params.filename }, (err: any, file: any) => {
-            if (!file || file.length === 0) {
-                return res.status(404).json({ message: 'File not found' });
-            }
-
-            const readstream = gfs.createReadStream(file.filename);
-            readstream.pipe(res);
+        const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
+            bucketName: 'uploads',
         });
-    } catch (error) {
-        res.status(500).json({ message: 'File retrieval failed', error });
+
+        const fileStream = bucket.openDownloadStreamByName(filename);
+
+        fileStream.on('error', (err) => {
+            return res.status(404).json({ message: 'File not found!' });
+        });
+
+        res.set('Content-Type', 'application/octet-stream'); // Automatically detect type
+        fileStream.pipe(res);
+    } catch (err) {
+        return res.status(500).json({ message: 'Internal Server Error!' });
+    }
+};
+
+export const deleteFile = async (req: Request, res: Response) => {
+    try {
+        const { filename } = req.params;
+
+        const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
+            bucketName: 'uploads',
+        });
+
+        // Find File in Bucket
+        const files = await conn.db
+            .collection('uploads.files')
+            .findOne({ filename: filename });
+
+        if (!files) {
+            return res.status(404).json({ message: 'File not found!' });
+        }
+
+        // Delete File
+        await bucket.delete(files._id);
+        return res.status(200).json({ message: 'File deleted successfully!' });
+    } catch (err) {
+        return res.status(500).json({ message: 'Internal Server Error!' });
+    }
+};
+
+export const listFiles = async (req: Request, res: Response) => {
+    try {
+        const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
+            bucketName: 'uploads', // Bucket name same as upload ke waqt
+        });
+
+        const files = await bucket.find().toArray(); // Saare files ko fetch karta hai
+
+        if (!files || files.length === 0) {
+            return res.status(404).json({ message: 'No files found!' });
+        }
+
+        const fileList = files.map((file) => ({
+            filename: file.filename,
+            size: file.length,
+            uploadedAt: file.uploadDate,
+        }));
+
+        return res.status(200).json(fileList);
+    } catch (err) {
+        return res.status(500).json({ message: 'Internal Server Error!' });
     }
 };

@@ -1,9 +1,7 @@
-/* eslint-disable prettier/prettier */
+import jwt from 'jsonwebtoken';
 import { RequestHandler } from 'express';
 import { HttpError } from '../helpers/HttpError';
-// import { UserRole } from './auth.middleware';
 
-// Define roles
 export enum UserRole {
     ADMIN = 'ADMIN',
     CONTRACTOR = 'CONTRACTOR',
@@ -11,16 +9,19 @@ export enum UserRole {
     PUBLIC = 'PUBLIC',
 }
 
-// Middleware for role-based authentication
 export const authMiddleware = (allowedRoles: UserRole[]): RequestHandler => {
-    return (req, res, next) => {
+    return (req: any, res, next) => {
         try {
-            console.log('req.user', req.user)
-            if (!req.user) {
+            const token = req.headers.authorization?.split(' ')[1];
+
+            if (!token) {
                 throw new HttpError({ code: 401, message: 'Unauthorized' });
             }
 
-            if (!allowedRoles.includes(req.user.role as unknown as UserRole)) {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+            req.user = decoded;
+
+            if (!allowedRoles.includes(req.user.role)) {
                 throw new HttpError({
                     code: 403,
                     message: 'Forbidden: Access denied',
@@ -34,9 +35,7 @@ export const authMiddleware = (allowedRoles: UserRole[]): RequestHandler => {
                     .status(err.code || 403)
                     .json({ message: err.message || 'Access Denied' });
             }
-            return res
-                .status(403)
-                .json({ message: 'Access Denied' });
+            return res.status(403).json({ message: 'Access Denied' });
         }
     };
 };

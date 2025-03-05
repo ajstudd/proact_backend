@@ -1,35 +1,33 @@
-import { IComment } from '@/types';
-import { Schema, model } from 'mongoose';
-const CommentSchema = new Schema<IComment>(
+import mongoose, { Schema, Document } from 'mongoose';
+
+interface IComment extends Document {
+    project: mongoose.Schema.Types.ObjectId;
+    user: mongoose.Schema.Types.ObjectId;
+    content: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+const commentSchema = new Schema<IComment>(
     {
+        project: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Project',
+            required: true,
+        },
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+        },
         content: {
             type: String,
             required: true,
-            unique: false,
-        },
-        images: [
-            {
-                type: Schema.Types.ObjectId,
-                ref: 'IImage',
-                required: true,
-            },
-        ],
-        ownerId: {
-            type: String,
-            required: false,
-            unique: false,
-        },
-        postid: {
-            type: String,
-            required: true,
-            unique: false,
         },
     },
-    {
-        timestamps: true,
-        _id: true,
-        id: true,
-    }
+    { timestamps: true }
 );
 
-export default model<IComment>('IComment', CommentSchema, 'comments');
+const Comment = mongoose.model<IComment>('Comment', commentSchema);
+
+export default Comment;

@@ -1,20 +1,18 @@
 import mongoose from 'mongoose';
-import Grid from 'gridfs-stream';
+import dotenv from 'dotenv';
 
-let gfs: Grid.Grid | null = null;
+dotenv.config();
 
-export const connectDB = async () => {
-    try {
-        const conn = await mongoose.connect(process.env.MONGO_URL as string);
-        console.log(`MongoDB Connected: ${conn.connection.host}`);
+mongoose.connect(process.env.MONGO_URL as string);
 
-        // Init GridFS
-        gfs = Grid(conn.connection.db, mongoose.mongo);
-        gfs.collection('uploads'); // Set bucket name
-    } catch (err) {
-        console.error('MongoDB Connection Failed:', err);
-        process.exit(1);
-    }
-};
+const conn = mongoose.connection;
 
-export const getGFS = () => gfs;
+conn.on('connected', () => {
+    console.log('Connected to MongoDB');
+});
+
+conn.on('error', (err) => {
+    console.log('MongoDB Connection Error:', err);
+});
+
+export default conn;

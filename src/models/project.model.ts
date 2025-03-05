@@ -20,7 +20,7 @@ const ProjectSchema = new Schema(
         updates: [
             {
                 content: { type: String, required: true },
-                media: { type: String }, // Image or PDF
+                media: [{ type: String }], // Array of URLs
                 date: { type: Date, default: Date.now },
             },
         ],

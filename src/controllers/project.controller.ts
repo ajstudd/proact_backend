@@ -1,42 +1,91 @@
-import { Request, Response } from "express";
-import { gridBucket } from "../configs/gridFsConfig";
-import Project from "../models/Project";
-import { uploadFile } from "../services/uploadService";
+import { Request, Response } from 'express';
+import { CustomRequest } from '../types/CustomRequest';
+import {
+    createProject,
+    updateProject,
+    deleteProject,
+    getProjectById,
+    getAllProjects,
+} from '@/services/project.service';
 
-export const createProject = async (req: Request, res: Response) => {
-  try {
-    const { description, location, associatedProfiles, budget, expenditure } = req.body;
+export const createProjectController = async (
+    req: CustomRequest,
+    res: Response
+) => {
+    try {
+        console.log('Received Files:', req.files); // Debugging
 
-    let bannerId = "";
-    let pdfId = "";
+        const projectData = {
+            ...req.body,
+            banner: req.files?.banner?.[0] ?? null, // ✅ Ensure it's defined
+            pdf: req.files?.pdf?.[0] ?? null,
+        };
 
-    if (req.files) {
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        console.log('Banner File:', projectData.banner); // Debugging
+        console.log('PDF File:', projectData.pdf); // Debugging
 
-      if (files["banner"]?.[0]) {
-        bannerId = await uploadFile(req, files["banner"][0].originalname);
-      }
-
-      if (files["pdf"]?.[0]) {
-        pdfId = await uploadFile(req, files["pdf"][0].originalname);
-      }
+        const project = await createProject(projectData);
+        res.status(201).json({
+            message: 'Project Created Successfully!',
+            project,
+        });
+    } catch (err: any) {
+        console.log(err);
+        res.status(500).json({
+            message: err.message || 'Internal Server Error!',
+        });
     }
+};
 
-    const project = await Project.create({
-      description,
-      location: JSON.parse(location),
-      associatedProfiles: JSON.parse(associatedProfiles),
-      budget,
-      expenditure,
-      bannerId,
-      pdfId,
-      governmentId: req.user?.id, // Government Authenticated User ID
-      contractorId: req.body.contractorId,
-    });
+export const updateProjectController = async (req: Request, res: Response) => {
+    try {
+        const project = await updateProject(req.params.id, req.body);
+        res.status(200).json({
+            message: 'Project Updated Successfully!',
+            project,
+        });
+    } catch (err: any) {
+        console.log(err);
+        res.status(500).json({
+            message: err.message || 'Internal Server Error!',
+        });
+    }
+};
 
-    res.status(201).json({ message: "Project Created Successfully!", project });
-  } catch (error) {
-    console.log("❌ Project Creation Error:", error);
-    res.status(500).json({ message: "Failed to Create Project" });
-  }
+export const deleteProjectController = async (req: Request, res: Response) => {
+    try {
+        await deleteProject(req.params.id);
+        res.status(200).json({
+            message: 'Project Deleted Successfully!',
+        });
+    } catch (err: any) {
+        console.log(err);
+        res.status(500).json({
+            message: err.message || 'Internal Server Error!',
+        });
+    }
+};
+
+export const getProjectByIdController = async (req: Request, res: Response) => {
+    try {
+        const project = await getProjectById(req.params.id);
+        res.status(200).json({
+            project,
+        });
+    } catch (err: any) {
+        console.log(err);
+        res.status(500).json({
+            message: err.message || 'Internal Server Error!',
+        });
+    }
+};
+
+export const getAllProjectsController = async (req: Request, res: Response) => {
+    try {
+        const projects = await getAllProjects();
+        res.status(200).json({ projects });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ message: 'Internal Server Error!' });
+    }
 };
