@@ -18,7 +18,9 @@ app.use(cors());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json({ limit: '16MB' }));
 app.use(express.static('public'));
-app.use('/file', express.static('uploads'));
+
+//this will expose the file to the client , can be a security issue
+// app.use('/file', express.static('uploads'));
 
 app.use('/api/v1', routes);
 
