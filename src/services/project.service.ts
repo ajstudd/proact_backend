@@ -1,12 +1,11 @@
 import Project from '../models/project.model';
-import { uploadFile } from './fileUpload.service';
+import mongoose from 'mongoose';
 import { toObjectId } from '../utils/toObjectId';
-import mongoose, { ObjectId } from 'mongoose';
 
 interface ProjectData {
     title: string;
-    banner?: Express.Multer.File; // Optional Now
-    pdf?: Express.Multer.File;
+    bannerUrl?: string;
+    pdfUrl?: string;
     description: string;
     location: {
         lat: number;
@@ -20,27 +19,20 @@ interface ProjectData {
 
 export const createProject = async (projectData: ProjectData) => {
     try {
-        let bannerUrl = '';
-        let pdfUrl = '';
-
-        if (projectData.banner) {
-            const { url } = await uploadFile(projectData.banner);
-            bannerUrl = url; // ✅ Save Download URL
-            console.log('✅ Banner Uploaded:', bannerUrl);
+        // Convert string IDs to ObjectIds
+        if (projectData.contractor) {
+            projectData.contractor = toObjectId(projectData.contractor);
         }
 
-        if (projectData.pdf) {
-            const { url } = await uploadFile(projectData.pdf);
-            pdfUrl = url; // ✅ Save Download URL
+        if (projectData.government) {
+            projectData.government = toObjectId(projectData.government);
         }
 
-        projectData.contractor = toObjectId(projectData.contractor);
-        projectData.government = toObjectId(projectData.government);
-
+        // Create project with the data including URLs from file upload
         const project = await Project.create({
             title: projectData.title,
-            bannerUrl,
-            pdfUrl,
+            bannerUrl: projectData.bannerUrl || '',
+            pdfUrl: projectData.pdfUrl || '',
             description: projectData.description,
             location: projectData.location,
             budget: projectData.budget,
@@ -50,7 +42,7 @@ export const createProject = async (projectData: ProjectData) => {
 
         return project;
     } catch (error) {
-        console.log(error);
+        console.log('Error in createProject service:', error);
         throw new Error('Project creation failed!');
     }
 };

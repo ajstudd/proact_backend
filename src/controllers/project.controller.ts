@@ -7,30 +7,47 @@ import {
     getProjectById,
     getAllProjects,
 } from '@/services/project.service';
+import { uploadFile } from '../services/fileUpload.service';
 
 export const createProjectController = async (
     req: CustomRequest,
     res: Response
 ) => {
     try {
-        console.log('Received Files:', req.files); // Debugging
+        const files = req.files as {
+            [fieldname: string]: Express.Multer.File[];
+        };
+        console.log('files', files);
 
+        // Process banner upload if it exists
+        let bannerUrl = '';
+        if (files && files.banner && files.banner.length > 0) {
+            const bannerResult = await uploadFile(files.banner[0]);
+            bannerUrl = bannerResult.url;
+        }
+
+        // Process PDF upload if it exists
+        let pdfUrl = '';
+        if (files && files.pdf && files.pdf.length > 0) {
+            const pdfResult = await uploadFile(files.pdf[0]);
+            pdfUrl = pdfResult.url;
+        }
+
+        // Create project with form data and file URLs
         const projectData = {
             ...req.body,
-            banner: req.files?.banner?.[0] ?? null, // ✅ Ensure it's defined
-            pdf: req.files?.pdf?.[0] ?? null,
+            bannerUrl,
+            pdfUrl,
         };
 
-        console.log('Banner File:', projectData.banner); // Debugging
-        console.log('PDF File:', projectData.pdf); // Debugging
-
         const project = await createProject(projectData);
+
         res.status(201).json({
             message: 'Project Created Successfully!',
             project,
         });
     } catch (err: any) {
-        console.log(err);
+        console.log('Error in createProjectController:', err);
         res.status(500).json({
             message: err.message || 'Internal Server Error!',
         });

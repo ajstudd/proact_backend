@@ -6,47 +6,40 @@ import dotenv from 'dotenv';
 import sharp from 'sharp';
 import { Readable } from 'stream';
 import mongoose from 'mongoose';
-import streamToBuffer from '@/utils/streamToBuffer';
+import fs from 'fs';
 
 dotenv.config();
 
-const storage = new GridFsStorage({
-    url: process.env.MONGO_URL as string,
-    file: async (req, file) => {
-        const filename = `${Date.now()}-${crypto.randomBytes(10).toString('hex')}${path.extname(file.originalname)}`;
-        const bucketName = 'uploads';
+// Define uploads directory path
+const uploadsDir = path.join(__dirname, '../../uploads');
 
-        let stream = file.stream;
-        const buffer = await streamToBuffer(stream); // Only this line needed
+// Ensure uploads directory exists
+const ensureUploadsDirectory = () => {
+    if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+        console.log(`Created uploads directory at ${uploadsDir}`);
+    }
+};
 
-        if (file.mimetype.startsWith('image')) {
-            const compressedBuffer = await sharp(buffer)
-                .resize({ width: 800 })
-                .jpeg({ quality: 70 })
-                .toBuffer();
+// Create uploads directory on module load
+ensureUploadsDirectory();
 
-            stream = Readable.from(compressedBuffer);
-        }
-
-        if (file.mimetype === 'application/pdf') {
-            const pages = await sharp(buffer, { density: 300 })
-                .jpeg({ quality: 70 })
-                .toBuffer();
-
-            stream = Readable.from(pages);
-        }
-
-        return {
-            filename,
-            bucketName,
-            metadata: { originalName: file.originalname },
-            stream,
-        };
+// Create disk storage for temporary file uploads
+const diskStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        // Make sure directory exists before attempting to write
+        ensureUploadsDirectory();
+        cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueName = `${Date.now()}-${crypto.randomBytes(10).toString('hex')}${path.extname(file.originalname)}`;
+        cb(null, uniqueName);
     },
 });
 
+// Configure multer to use disk storage instead of memory storage
 const upload = multer({
-    storage,
+    storage: diskStorage,
     fileFilter: (req, file, cb) => {
         if (
             file.mimetype.startsWith('image/') ||
@@ -57,74 +50,63 @@ const upload = multer({
             cb(null, false);
         }
     },
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 });
 
-// export const uploadFile = async (
-//     file: Express.Multer.File
-// ): Promise<string> => {
-//     try {
-//         if (!file || !file.stream) {
-//             throw new Error('File stream is undefined!');
-//         }
-
-//         const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
-//             bucketName: 'uploads',
-//         });
-
-//         console.log('Uploading File:', file.filename);
-
-//         return new Promise((resolve, reject) => {
-//             const uploadStream = bucket.openUploadStream(file.filename);
-
-//             uploadStream.on('finish', () => {
-//                 resolve(file.filename);
-//             });
-
-//             uploadStream.on('error', (err) => {
-//                 reject(err);
-//             });
-
-//             // Pipe file stream to GridFS
-//             file.stream.pipe(uploadStream);
-//         });
-//     } catch (err) {
-//         console.error(err);
-//         throw new Error('File Upload Failed!');
-//     }
-// };
+// Function to upload file to GridFS
 export const uploadFile = async (
     file: Express.Multer.File
 ): Promise<{ filename: string; url: string }> => {
     try {
-        if (!file || !file.stream) {
-            throw new Error('File stream is undefined!');
+        if (!file) {
+            throw new Error('No file provided');
         }
 
         const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
             bucketName: 'uploads',
         });
 
-        console.log('Uploading File:', file.filename);
+        // Generate a unique filename
+        const filename = `${Date.now()}-${crypto.randomBytes(10).toString('hex')}${path.extname(file.originalname)}`;
 
+        // Verify file exists before creating read stream
+        if (!fs.existsSync(file.path)) {
+            throw new Error(`File does not exist at path: ${file.path}`);
+        }
+
+        // Create read stream from file on disk
+        const readStream = fs.createReadStream(file.path);
+
+        // Create write stream to GridFS
+        const uploadStream = bucket.openUploadStream(filename, {
+            contentType: file.mimetype,
+            metadata: { originalName: file.originalname },
+        });
+
+        // Return promise that resolves when upload is complete
         return new Promise((resolve, reject) => {
-            const uploadStream = bucket.openUploadStream(file.filename);
-
-            uploadStream.on('finish', () => {
-                resolve({
-                    filename: file.filename,
-                    url: `/file/${file.filename}`, // ✅ Return Download URL
+            readStream
+                .pipe(uploadStream)
+                .on('finish', () => {
+                    // Clean up temporary file
+                    fs.unlink(file.path, (err: any) => {
+                        if (err)
+                            console.error('Error deleting temp file:', err);
+                    });
+                    resolve({
+                        filename,
+                        url: `http://localhost:5000/api/v1/project/file/${filename}`,
+                    });
+                })
+                .on('error', (err: any) => {
+                    reject(err);
                 });
-            });
-
-            uploadStream.on('error', (err) => {
-                reject(err);
-            });
-
-            file.stream.pipe(uploadStream);
         });
     } catch (err) {
-        console.error(err);
-        throw new Error('File Upload Failed!');
+        console.error('File upload failed:', err);
+        throw new Error(
+            `File upload failed: ${err instanceof Error ? err.message : String(err)}`
+        );
     }
 };
 
