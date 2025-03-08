@@ -7,6 +7,7 @@ import {
     updateProjectController,
     deleteProjectController,
     getProjectByIdController,
+    getAllTrimmedProjectsController,
 } from '../controllers/project.controller';
 import { upload } from '../services/fileUpload.service';
 
@@ -34,6 +35,7 @@ router.get('/file/:filename', async (req, res) => {
     downloadStream.pipe(res);
 });
 
+router.get('/trimmed', getAllTrimmedProjectsController);
 router.get('/', getAllProjectsController);
 router.get('/:id', getProjectByIdController);
 router.put('/:id', updateProjectController);

@@ -6,6 +6,7 @@ import {
     deleteProject,
     getProjectById,
     getAllProjects,
+    getAllTrimmedProjects,
 } from '@/services/project.service';
 import { uploadFile } from '../services/fileUpload.service';
 
@@ -100,6 +101,19 @@ export const getProjectByIdController = async (req: Request, res: Response) => {
 export const getAllProjectsController = async (req: Request, res: Response) => {
     try {
         const projects = await getAllProjects();
+        res.status(200).json({ projects });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ message: 'Internal Server Error!' });
+    }
+};
+
+export const getAllTrimmedProjectsController = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const projects = await getAllTrimmedProjects();
         res.status(200).json({ projects });
     } catch (err) {
         console.log(err);

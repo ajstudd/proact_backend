@@ -19,16 +19,12 @@ interface ProjectData {
 
 export const createProject = async (projectData: ProjectData) => {
     try {
-        // Convert string IDs to ObjectIds
         if (projectData.contractor) {
             projectData.contractor = toObjectId(projectData.contractor);
         }
-
         if (projectData.government) {
             projectData.government = toObjectId(projectData.government);
         }
-
-        // Create project with the data including URLs from file upload
         const project = await Project.create({
             title: projectData.title,
             bannerUrl: projectData.bannerUrl || '',
@@ -100,5 +96,33 @@ export const getAllProjects = async () => {
     } catch (error) {
         console.log(error);
         throw new Error('Fetching projects failed!');
+    }
+};
+
+export const getAllTrimmedProjects = async () => {
+    try {
+        // Only select the fields we want to return
+        const projects = await Project.find(
+            {},
+            {
+                title: 1,
+                bannerUrl: 1,
+                description: 1,
+                location: 1,
+                budget: 1,
+                expenditure: 1,
+                likes: 1,
+                dislikes: 1,
+                associatedProfiles: 1,
+                contractor: 1,
+                government: 1,
+                createdAt: 1,
+                updatedAt: 1,
+            }
+        );
+        return projects;
+    } catch (error) {
+        console.log(error);
+        throw new Error('Fetching trimmed projects failed!');
     }
 };
