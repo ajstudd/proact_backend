@@ -1,17 +1,22 @@
 import { Router } from 'express';
 import {
     createCommentController,
-    getCommentsController,
-} from '../controllers/comment.controller';
+    getCommentsByProjectController,
+    updateCommentController,
+    deleteCommentController,
+} from '@/controllers/comment.controller';
 import { authMiddleware, UserRole } from '../middlewares/auth.middleware';
 
 const router = Router();
 
+// Comment routes
 router.post(
     '/',
     authMiddleware([UserRole.PUBLIC, UserRole.CONTRACTOR]),
     createCommentController
 );
-router.get('/:projectId', getCommentsController);
+router.get('/project/:projectId', getCommentsByProjectController);
+router.put('/:commentId', updateCommentController);
+router.delete('/:commentId', deleteCommentController);
 
 export default router;

@@ -20,7 +20,7 @@ const ProjectSchema = new Schema(
         updates: [
             {
                 content: { type: String, required: true },
-                media: [{ type: String }], // Array of URLs
+                media: [{ type: String }],
                 date: { type: Date, default: Date.now },
             },
         ],
@@ -38,5 +38,15 @@ const ProjectSchema = new Schema(
     },
     { timestamps: true }
 );
+
+// Create indexes for faster searching
+ProjectSchema.index({
+    title: 'text',
+    description: 'text',
+    'location.place': 'text',
+});
+ProjectSchema.index({ createdAt: -1 });
+ProjectSchema.index({ budget: 1 });
+ProjectSchema.index({ 'location.place': 1 });
 
 export default model('Project', ProjectSchema);

@@ -8,10 +8,22 @@ import {
     deleteProjectController,
     getProjectByIdController,
     getAllTrimmedProjectsController,
+    addProjectUpdateController,
+    removeProjectUpdateController,
+    editProjectUpdateController,
+    getProjectUpdatesController,
+    searchProjectsController,
 } from '../controllers/project.controller';
 import { upload } from '../services/fileUpload.service';
+import likeRoutes from './like.route';
+import commentRoutes from './comment.route';
 
 const router = Router();
+
+// Mount like routes
+router.use('/interaction', likeRoutes);
+// Mount comment routes
+router.use('/comments', commentRoutes);
 
 router.post(
     '/create',
@@ -35,10 +47,19 @@ router.get('/file/:filename', async (req, res) => {
     downloadStream.pipe(res);
 });
 
+// Search route
+router.get('/search', searchProjectsController);
+
 router.get('/trimmed', getAllTrimmedProjectsController);
 router.get('/', getAllProjectsController);
 router.get('/:id', getProjectByIdController);
 router.put('/:id', updateProjectController);
 router.delete('/:id', deleteProjectController);
+
+// Project updates routes
+router.post('/:projectId/updates', addProjectUpdateController);
+router.get('/:projectId/updates', getProjectUpdatesController);
+router.put('/:projectId/updates/:updateId', editProjectUpdateController);
+router.delete('/:projectId/updates/:updateId', removeProjectUpdateController);
 
 export default router;

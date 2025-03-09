@@ -1,26 +1,109 @@
 import Comment from '../models/comment.model';
+import Project from '../models/project.model';
 
-export const createComment = async (req: any) => {
-    const { project, content } = req.body;
-    const user = req.user._id; // JWT middleware se user ka id aayega
+export const createComment = async (commentData: {
+    content: string;
+    project: string;
+    user: string;
+    parentComment?: string;
+}) => {
+    try {
+        // Create the comment
+        const comment = await Comment.create(commentData);
 
-    if (!content) {
-        throw new Error('Comment Content is Required!');
+        // If it's a reply to another comment, add it to the parent comment’s replies
+        if (commentData.parentComment) {
+            await Comment.findByIdAndUpdate(
+                commentData.parentComment,
+                { $push: { replies: comment._id } },
+                { new: true }
+            );
+        } else {
+            // If it's a top-level comment, add it to the project’s comments
+            await Project.findByIdAndUpdate(
+                commentData.project,
+                { $push: { comments: comment._id } },
+                { new: true }
+            );
+        }
+
+        // Populate user data for the response
+        const populatedComment = await Comment.findById(comment._id).populate(
+            'user',
+            'name email avatar'
+        );
+
+        return populatedComment;
+    } catch (error) {
+        throw error;
     }
-
-    const comment = await Comment.create({
-        project,
-        user,
-        content,
-    });
-
-    return comment;
 };
 
 export const getCommentsByProject = async (projectId: string) => {
-    const comments = await Comment.find({ project: projectId })
-        .populate('user', 'name email profile')
-        .sort({ createdAt: -1 });
+    try {
+        // Get all top-level comments for a project
+        const comments = await Comment.find({
+            project: projectId,
+            parentComment: { $exists: false },
+        })
+            .populate('user', 'name email avatar')
+            .populate({
+                path: 'replies',
+                populate: {
+                    path: 'user',
+                    select: 'name email avatar',
+                },
+            })
+            .sort({ createdAt: -1 });
 
-    return comments;
+        return comments;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const updateComment = async (commentId: string, content: string) => {
+    try {
+        const comment = await Comment.findByIdAndUpdate(
+            commentId,
+            { content },
+            { new: true }
+        ).populate('user', 'name email avatar');
+
+        return comment;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const deleteComment = async (commentId: string) => {
+    try {
+        // Get the comment to check if it’s a top-level comment or reply
+        const comment = await Comment.findById(commentId);
+        if (!comment) {
+            throw new Error('Comment not found');
+        }
+
+        // If it’s a top-level comment, remove it from the project
+        if (!comment.parentComment) {
+            await Project.findByIdAndUpdate(comment.project, {
+                $pull: { comments: commentId },
+            });
+        } else {
+            // If it’s a reply, remove it from the parent comment
+            await Comment.findByIdAndUpdate(comment.parentComment, {
+                $pull: { replies: commentId },
+            });
+        }
+
+        // Delete the comment and its replies
+        if (comment.replies && comment.replies.length > 0) {
+            await Comment.deleteMany({ _id: { $in: comment.replies } });
+        }
+        await Comment.findByIdAndDelete(commentId);
+
+        return { success: true };
+    } catch (error) {
+        throw error;
+    }
 };
