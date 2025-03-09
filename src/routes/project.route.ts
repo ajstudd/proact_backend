@@ -13,8 +13,8 @@ import {
     editProjectUpdateController,
     getProjectUpdatesController,
     searchProjectsController,
-} from '../controllers/project.controller';
-import { upload } from '../services/fileUpload.service';
+} from '@/controllers/project.controller';
+import { upload } from '@/services/fileUpload.service';
 import likeRoutes from './like.route';
 import commentRoutes from './comment.route';
 
