@@ -12,7 +12,7 @@ const router = Router();
 // Comment routes
 router.post(
     '/',
-    authMiddleware([UserRole.PUBLIC, UserRole.CONTRACTOR]),
+    authMiddleware([UserRole.USER, UserRole.CONTRACTOR]),
     createCommentController
 );
 router.get('/project/:projectId', getCommentsByProjectController);

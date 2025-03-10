@@ -8,6 +8,8 @@ interface IComment extends Document {
     updatedAt: Date;
     replies: mongoose.Schema.Types.ObjectId[];
     parentComment: mongoose.Schema.Types.ObjectId;
+    likes: mongoose.Schema.Types.ObjectId[];
+    dislikes: mongoose.Schema.Types.ObjectId[];
 }
 
 const commentSchema = new Schema<IComment>(
@@ -28,6 +30,8 @@ const commentSchema = new Schema<IComment>(
         },
         replies: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }],
         parentComment: { type: mongoose.Schema.Types.ObjectId, ref: 'Comment' },
+        likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+        dislikes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     },
     { timestamps: true }
 );

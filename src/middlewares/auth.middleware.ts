@@ -6,7 +6,7 @@ export enum UserRole {
     ADMIN = 'ADMIN',
     CONTRACTOR = 'CONTRACTOR',
     GOVERNMENT = 'GOVERNMENT',
-    PUBLIC = 'PUBLIC',
+    USER = 'USER',
 }
 
 export const authMiddleware = (allowedRoles: UserRole[]): RequestHandler => {
@@ -18,7 +18,10 @@ export const authMiddleware = (allowedRoles: UserRole[]): RequestHandler => {
                 throw new HttpError({ code: 401, message: 'Unauthorized' });
             }
 
-            const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+            const decoded = jwt.verify(
+                token,
+                process.env.JWT_TOKEN_SECRET as string
+            );
             req.user = decoded;
 
             if (!allowedRoles.includes(req.user.role)) {
@@ -30,6 +33,7 @@ export const authMiddleware = (allowedRoles: UserRole[]): RequestHandler => {
 
             next();
         } catch (err) {
+            console.log('err', err);
             if (err instanceof HttpError) {
                 return res
                     .status(err.code || 403)

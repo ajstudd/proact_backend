@@ -80,7 +80,23 @@ export const getProjectById = async (projectId: string) => {
     try {
         const project = await Project.findById(projectId)
             .populate('contractor', 'name _id')
-            .populate('government', 'name _id');
+            .populate('government', 'name _id')
+            .populate({
+                path: 'comments',
+                populate: [
+                    {
+                        path: 'user',
+                        select: 'name _id photo.url',
+                    },
+                    {
+                        path: 'replies',
+                        populate: {
+                            path: 'user',
+                            select: 'name _id photo.url',
+                        },
+                    },
+                ],
+            });
         if (!project) {
             throw new Error('Project not found!');
         }

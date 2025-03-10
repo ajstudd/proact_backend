@@ -28,10 +28,10 @@ export const createComment = async (commentData: {
         }
 
         // Populate user data for the response
-        const populatedComment = await Comment.findById(comment._id).populate(
-            'user',
-            'name email avatar'
-        );
+        const populatedComment = await Comment.findById(comment._id)
+            .populate('user', 'name email avatar')
+            .populate('likes', '_id')
+            .populate('dislikes', '_id');
 
         return populatedComment;
     } catch (error) {
@@ -47,12 +47,24 @@ export const getCommentsByProject = async (projectId: string) => {
             parentComment: { $exists: false },
         })
             .populate('user', 'name email avatar')
+            .populate('likes', '_id')
+            .populate('dislikes', '_id')
             .populate({
                 path: 'replies',
-                populate: {
-                    path: 'user',
-                    select: 'name email avatar',
-                },
+                populate: [
+                    {
+                        path: 'user',
+                        select: 'name email avatar',
+                    },
+                    {
+                        path: 'likes',
+                        select: '_id',
+                    },
+                    {
+                        path: 'dislikes',
+                        select: '_id',
+                    },
+                ],
             })
             .sort({ createdAt: -1 });
 
