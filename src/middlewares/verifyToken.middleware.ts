@@ -77,6 +77,7 @@ export const verifyToken = (
             // Step 4: Attach user data to request object
             req.user = {
                 id: user._id.toString(),
+                _id: user._id.toString(),
                 email: user.email,
                 name: user.name,
                 password: user.password ?? '',

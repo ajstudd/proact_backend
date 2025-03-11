@@ -4,6 +4,7 @@ import imageRoute from './routes/image.route';
 import userRoute from './routes/user.route';
 import postRoute from './routes/post.route';
 import otpRoute from './routes/otp.routes';
+import corruptionReportRoutes from './routes/corruption-report.route';
 import fileRoute from './routes/fileUpload.route';
 import projectRoute from './routes/project.route';
 
@@ -16,5 +17,6 @@ router.use('/user', userRoute);
 router.use('/otp', otpRoute);
 router.use('/file', fileRoute);
 router.use('/project', projectRoute);
+router.use('/corruption-reports', corruptionReportRoutes);
 
 export default router;

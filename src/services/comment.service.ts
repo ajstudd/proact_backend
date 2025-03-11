@@ -119,3 +119,31 @@ export const deleteComment = async (commentId: string) => {
         throw error;
     }
 };
+
+export const likeComment = async (commentId: string, userId: string) => {
+    try {
+        const comment = await Comment.findByIdAndUpdate(
+            commentId,
+            { $addToSet: { likes: userId }, $pull: { dislikes: userId } },
+            { new: true }
+        ).populate('user', 'name email avatar');
+
+        return comment;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const dislikeComment = async (commentId: string, userId: string) => {
+    try {
+        const comment = await Comment.findByIdAndUpdate(
+            commentId,
+            { $addToSet: { dislikes: userId }, $pull: { likes: userId } },
+            { new: true }
+        ).populate('user', 'name email avatar');
+
+        return comment;
+    } catch (error) {
+        throw error;
+    }
+};

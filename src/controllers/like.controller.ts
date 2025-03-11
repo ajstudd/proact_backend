@@ -10,6 +10,7 @@ import {
 export const likeProjectController = async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
+        console.log('req', req);
         const userId = req.body.userId;
 
         if (!userId) {

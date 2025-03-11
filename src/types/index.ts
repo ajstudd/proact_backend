@@ -5,3 +5,4 @@ export * from './services';
 export * from './image.types';
 export * from './pagination.types';
 export * from './role.types';
+export * from './corruptionReport.types';

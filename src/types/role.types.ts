@@ -5,10 +5,17 @@ const roleCode = {
     GOVERNMENT: 'GOVERNMENT',
 } as const;
 
-export type RoleCode = keyof typeof roleCode; // "ADMIN" | "USER" | "CONTRACTOR" | "GOVERNMENT"
+// export type RoleCode = keyof typeof roleCode; // "ADMIN" | "USER" | "CONTRACTOR" | "GOVERNMENT"
 
-export type RolesEnum = RoleCode;
+// export type RolesEnum = RoleCode;
 
-export interface IRole {
-    [key: string]: RolesEnum;
+// export interface IRole {
+//     [key: string]: RolesEnum;
+// }
+
+export interface IRoleFromRoles {
+    ADMIN: '';
+    USER: '';
+    CONTRACTOR: '';
+    GOVERNMENT: '';
 }

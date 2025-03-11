@@ -1,6 +1,5 @@
 import { ObjectId, PopulatedDoc } from 'mongoose';
 import { IImage } from './image.types';
-import { RolesEnum } from './role.types';
 
 const roleCode = {
     ADMIN: 'ADMIN',
@@ -9,7 +8,8 @@ const roleCode = {
     GOVERNMENT: 'GOVERNMENT',
 } as const;
 
-export type RoleCode = keyof typeof roleCode; // "ADMIN" | "USER" | "CONTRACTOR" | "GOVERNMENT"
+export type RoleCode = keyof typeof roleCode;
+export type RolesEnum = RoleCode;
 export interface IUser extends Document {
     _id: ObjectId;
     id: string;
@@ -67,6 +67,7 @@ export interface IPost {
 
 export interface IRequestUser {
     id: string;
+    _id: string;
     email: string;
     phone: string;
     name: string;

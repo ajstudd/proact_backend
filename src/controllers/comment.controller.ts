@@ -5,6 +5,8 @@ import {
     getCommentsByProject,
     updateComment,
     deleteComment,
+    likeComment,
+    dislikeComment,
 } from '@/services/comment.service';
 
 export const createCommentController = async (req: Request, res: Response) => {
@@ -90,6 +92,52 @@ export const deleteCommentController = async (req: Request, res: Response) => {
         });
     } catch (err: any) {
         console.log('Error in deleteCommentController:', err);
+        res.status(500).json({
+            message: err.message || 'Internal Server Error!',
+        });
+    }
+};
+
+export const likeCommentController = async (req: Request, res: Response) => {
+    try {
+        const { commentId } = req.params;
+        const userId = (req as CustomRequest).user?.id;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
+
+        const comment = await likeComment(commentId, userId);
+
+        res.status(200).json({
+            message: 'Comment liked successfully',
+            comment,
+        });
+    } catch (err: any) {
+        console.log('Error in likeCommentController:', err);
+        res.status(500).json({
+            message: err.message || 'Internal Server Error!',
+        });
+    }
+};
+
+export const dislikeCommentController = async (req: Request, res: Response) => {
+    try {
+        const { commentId } = req.params;
+        const userId = (req as CustomRequest).user?.id;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
+
+        const comment = await dislikeComment(commentId, userId);
+
+        res.status(200).json({
+            message: 'Comment disliked successfully',
+            comment,
+        });
+    } catch (err: any) {
+        console.log('Error in dislikeCommentController:', err);
         res.status(500).json({
             message: err.message || 'Internal Server Error!',
         });
