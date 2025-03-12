@@ -39,6 +39,13 @@ router.get(
     catchAsync(corruptionReportController.getProjectReports)
 );
 
+// Get a specific report by ID (anonymous or authenticated)
+router.get(
+    '/info/:reportId',
+    verifyToken({ strict: false }), // Optional authentication
+    catchAsync(corruptionReportController.getReportById)
+);
+
 // Get all reports for projects created by the logged-in user
 router.get(
     '/user-projects',

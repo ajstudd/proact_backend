@@ -14,11 +14,27 @@ if (!API_KEY) {
 const genAI = new GoogleGenerativeAI(API_KEY || '');
 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
+// Helper function to clean AI responses before parsing JSON
+const cleanJsonResponse = (text: string): string => {
+    // Remove any markdown code blocks (```json ... ```)
+    text = text.replace(/```(json|)\s*([\s\S]*?)\s*```/g, '$2');
+
+    // Remove any extra backticks
+    text = text.replace(/`/g, '');
+
+    // Trim whitespace
+    text = text.trim();
+
+    return text;
+};
+
 export interface AIAnalysisResult {
     severity: number; // 1-10 scale
     summary: string;
     isValidReport: boolean;
     tags: string[];
+    containsInappropriateContent?: boolean;
+    rejectionReason?: string;
 }
 
 export const analyzeCorruptionReport = async (
@@ -37,6 +53,52 @@ export const analyzeCorruptionReport = async (
                 isValidReport: true,
                 tags: ['unanalyzed'],
             };
+        }
+
+        // First check for inappropriate content
+        const moderationPrompt = `
+        You are a content moderation system. Analyze the following text and determine if it contains any:
+        1. Abusive or offensive language in any language
+        2. References to pornography or sexually explicit content
+        3. Illegal content or activities
+        4. Hate speech or discriminatory content
+        
+        Text to analyze: "${description}"
+        
+        Respond only with a JSON object in this format:
+        {
+          "containsInappropriateContent": boolean,
+          "rejectionReason": "string explaining what was found if inappropriate, otherwise empty"
+        }
+        `;
+
+        const moderationResult = await model.generateContent(moderationPrompt);
+        const moderationText = moderationResult.response.text();
+
+        try {
+            // Clean the moderation response before parsing
+            const cleanModerationText = cleanJsonResponse(moderationText);
+            console.log('Cleaned moderation response:', cleanModerationText);
+
+            const moderationResponse = JSON.parse(cleanModerationText);
+
+            if (moderationResponse.containsInappropriateContent) {
+                return {
+                    severity: 0,
+                    summary: 'Report contains inappropriate content.',
+                    isValidReport: false,
+                    tags: ['content_violation'],
+                    containsInappropriateContent: true,
+                    rejectionReason:
+                        moderationResponse.rejectionReason ||
+                        'Contains inappropriate content',
+                };
+            }
+        } catch (error) {
+            console.error(
+                'Failed to parse moderation response:',
+                moderationText
+            );
         }
 
         const prompt = `
@@ -66,12 +128,22 @@ export const analyzeCorruptionReport = async (
 
         // Parse the response as JSON
         try {
-            const jsonResponse = JSON.parse(textResult);
+            // Clean the AI analysis response before parsing
+            const cleanTextResult = cleanJsonResponse(textResult);
+            console.log('Cleaned AI analysis response:', cleanTextResult);
+            // Cleaned moderation response: {
+            //     "containsInappropriateContent": true,
+            //     "rejectionReason": "The text contains abusive and offensive language.  The phrase translates roughly to 'son of a whore, damn project' and is highly insulting."
+            //   }
+            const jsonResponse = JSON.parse(cleanTextResult);
             return {
                 severity: Math.min(10, Math.max(1, jsonResponse.severity || 5)), // Ensure score is between 1-10
                 summary: jsonResponse.summary || 'No summary provided',
-                isValidReport: jsonResponse.isValidReport !== false, // Default to true if not specified
+                isValidReport:
+                    jsonResponse.isValidReport !== false &&
+                    jsonResponse.containsInappropriateContent !== true,
                 tags: Array.isArray(jsonResponse.tags) ? jsonResponse.tags : [],
+                rejectionReason: jsonResponse?.rejectionReason,
             };
         } catch (error) {
             console.error('Failed to parse AI response:', textResult);

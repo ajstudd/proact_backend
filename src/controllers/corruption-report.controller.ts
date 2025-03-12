@@ -149,3 +149,29 @@ export const updateReportStatus = async (req: Request, res: Response) => {
         });
     }
 };
+
+export const getReportById = async (req: Request, res: Response) => {
+    try {
+        const { reportId } = req.params;
+
+        // Get userId if user is authenticated
+        const userId = req.user?.id;
+
+        const report = await corruptionReportService.getReportById(
+            reportId,
+            userId
+        );
+
+        res.status(200).json({
+            success: true,
+            report,
+        });
+    } catch (error) {
+        console.error('Error in getReportById controller:', error);
+        const err = error as Error & { code?: number };
+        res.status(err.code || 500).json({
+            success: false,
+            message: err.message || 'Failed to retrieve corruption report',
+        });
+    }
+};

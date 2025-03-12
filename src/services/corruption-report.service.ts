@@ -51,6 +51,22 @@ export const createCorruptionReport = async ({
             attachmentType !== 'none'
         );
 
+        if (!aiAnalysis.isValidReport) {
+            // If AI analysis is invalid, reject the report
+            if (aiAnalysis.containsInappropriateContent) {
+                throw new HttpError({
+                    message:
+                        'Invalid report. We detected this report as containing inappropriate content',
+                    code: 400,
+                });
+            }
+            throw new HttpError({
+                message:
+                    'Invalid report. We detected this report as potentially invalid or irrelevant',
+                code: 400,
+            });
+        }
+
         // Create the report
         const report = await Report.create({
             project: projectId,
@@ -217,6 +233,56 @@ export const updateReportStatus = async (
         }
         throw new HttpError({
             message: 'Failed to update report status',
+            code: 500,
+        });
+    }
+};
+
+export const getReportById = async (reportId: string, userId?: string) => {
+    try {
+        // Find the report
+        const report = await Report.findById(reportId)
+            .populate('project', 'title _id contractor government')
+            .populate('reportedBy.userId', 'name _id')
+            .lean();
+
+        if (!report) {
+            throw new HttpError({ message: 'Report not found', code: 404 });
+        }
+
+        // Check if user is authorized (project creator) if userId is provided
+        if (userId) {
+            const project = report.project as any; // Using any due to populated fields
+            const isProjectCreator =
+                project.contractor.toString() === userId ||
+                project.government.toString() === userId;
+
+            // Only project creators can see details about who reported (if not anonymous)
+            if (
+                !isProjectCreator &&
+                report.reportedBy &&
+                !report.reportedBy.isAnonymous
+            ) {
+                // Hide reporter details for non-project creators
+                if (report.reportedBy) {
+                    delete report.reportedBy.userId;
+                }
+            }
+        } else {
+            // Anonymous access - always hide reporter details
+            if (report.reportedBy) {
+                delete report.reportedBy.userId;
+            }
+        }
+
+        return report;
+    } catch (error) {
+        console.error('Error getting report by ID:', error);
+        if (error instanceof HttpError) {
+            throw error;
+        }
+        throw new HttpError({
+            message: 'Failed to get corruption report',
             code: 500,
         });
     }
