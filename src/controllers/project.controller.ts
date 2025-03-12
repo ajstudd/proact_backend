@@ -13,6 +13,7 @@ import {
     getProjectUpdates,
     searchProjects,
     filterProjects,
+    fastSearch,
 } from '@/services/project.service';
 import { uploadFile } from '../services/fileUpload.service';
 
@@ -292,6 +293,60 @@ export const searchProjectsController = async (req: Request, res: Response) => {
         });
     } catch (err: any) {
         console.log('Error in searchProjectsController:', err);
+        res.status(500).json({
+            message: err.message || 'Internal Server Error!',
+        });
+    }
+};
+
+export const fastSearchProjectsController = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const {
+            title,
+            description,
+            location,
+            startDate,
+            endDate,
+            id,
+            limit,
+            page,
+        } = req.query;
+
+        // Parse pagination parameters
+        const searchOptions = {
+            limit: limit ? parseInt(limit as string) : 20,
+            skip: page
+                ? (parseInt(page as string) - 1) *
+                  (limit ? parseInt(limit as string) : 20)
+                : 0,
+        };
+
+        // Build search parameters
+        const searchParams: any = {};
+
+        if (title) searchParams.title = title as string;
+        if (description) searchParams.description = description as string;
+        if (location) searchParams.location = location as string;
+        if (id) searchParams.id = id as string;
+
+        // Handle date parameters
+        if (startDate || endDate) {
+            searchParams.date = {};
+            if (startDate) searchParams.date.startDate = startDate;
+            if (endDate) searchParams.date.endDate = endDate;
+        }
+
+        const result = await fastSearch(searchParams, searchOptions);
+
+        res.status(200).json({
+            message: 'Projects found successfully',
+            ...result,
+        });
+    } catch (err: any) {
+        console.log('Error in fastSearchProjectsController:', err);
         res.status(500).json({
             message: err.message || 'Internal Server Error!',
         });

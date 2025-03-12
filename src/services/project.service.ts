@@ -371,3 +371,123 @@ export const filterProjects = async (
         throw new Error('Project filtering failed!');
     }
 };
+
+export const fastSearch = async (
+    searchParams: {
+        title?: string;
+        description?: string;
+        location?: string;
+        date?: {
+            startDate?: Date;
+            endDate?: Date;
+        };
+        id?: string;
+    },
+    options: {
+        limit?: number;
+        skip?: number;
+    } = {}
+) => {
+    try {
+        // Default options
+        const limit = options.limit || 20;
+        const skip = options.skip || 0;
+
+        // Build the search query
+        const query: Record<string, any> = {};
+
+        // Search by ID if provided
+        if (searchParams.id) {
+            try {
+                if (mongoose.Types.ObjectId.isValid(searchParams.id)) {
+                    query._id = new mongoose.Types.ObjectId(searchParams.id);
+                } else {
+                    // If ID search is requested but invalid, return empty results
+                    return {
+                        projects: [],
+                        total: 0,
+                        limit,
+                        skip,
+                        hasMore: false,
+                    };
+                }
+            } catch (error) {
+                console.log('Invalid ID format:', error);
+                return {
+                    projects: [],
+                    total: 0,
+                    limit,
+                    skip,
+                    hasMore: false,
+                };
+            }
+        } else {
+            // Build other search criteria
+            if (searchParams.title) {
+                query.title = { $regex: searchParams.title, $options: 'i' };
+            }
+
+            if (searchParams.description) {
+                query.description = {
+                    $regex: searchParams.description,
+                    $options: 'i',
+                };
+            }
+
+            if (searchParams.location) {
+                query['location.place'] = {
+                    $regex: searchParams.location,
+                    $options: 'i',
+                };
+            }
+
+            // Handle date range search
+            if (searchParams.date) {
+                const dateQuery: Record<string, any> = {};
+                if (searchParams.date.startDate) {
+                    dateQuery.$gte = new Date(searchParams.date.startDate);
+                }
+                if (searchParams.date.endDate) {
+                    dateQuery.$lte = new Date(searchParams.date.endDate);
+                }
+                if (Object.keys(dateQuery).length > 0) {
+                    query.createdAt = dateQuery;
+                }
+            }
+        }
+
+        // Execute query and get count
+        const [projects, total] = await Promise.all([
+            Project.find(query, {
+                title: 1,
+                bannerUrl: 1,
+                description: 1,
+                location: 1,
+                budget: 1,
+                contractor: 1,
+                government: 1,
+                _id: 1,
+                createdAt: 1,
+                updatedAt: 1,
+            })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .populate('contractor', 'name _id')
+                .populate('government', 'name _id')
+                .lean(),
+            Project.countDocuments(query),
+        ]);
+
+        return {
+            projects,
+            total,
+            limit,
+            skip,
+            hasMore: total > skip + projects.length,
+        };
+    } catch (error) {
+        console.log('Error in fastSearch service:', error);
+        throw new Error('Fast project search failed!');
+    }
+};

@@ -13,6 +13,7 @@ import {
     editProjectUpdateController,
     getProjectUpdatesController,
     searchProjectsController,
+    fastSearchProjectsController,
 } from '@/controllers/project.controller';
 import { upload } from '@/services/fileUpload.service';
 import likeRoutes from './like.route';
@@ -46,6 +47,9 @@ router.get('/file/:filename', async (req, res) => {
 
     downloadStream.pipe(res);
 });
+
+// Fast search route
+router.get('/fast-search', fastSearchProjectsController);
 
 // Search route
 router.get('/search', searchProjectsController);
