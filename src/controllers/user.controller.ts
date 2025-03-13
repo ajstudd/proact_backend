@@ -173,16 +173,16 @@ export const editProfile = async (req: Request, res: Response) => {
     try {
         // Check if file is there
         const file = req.file;
-        let photoId;
+        let photoUrl;
 
         if (file) {
             const uploadedFile = await uploadFile(file);
-            photoId = uploadedFile.filename;
+            photoUrl = uploadedFile.url;
         }
 
         const payload = {
             ...req.body,
-            ...(photoId && { photo: photoId }),
+            ...(photoUrl && { photo: photoUrl }),
         };
 
         const updatedUser = await userService.editUserProfile(

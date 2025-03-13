@@ -37,8 +37,7 @@ const UserSchema = new Schema<IUser>(
             default: 'USER',
         },
         photo: {
-            type: Schema.Types.ObjectId,
-            ref: 'Image',
+            type: String, // Changed from ObjectId to String to store the filename directly
         },
         isVerified: {
             type: Boolean,

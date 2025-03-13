@@ -4,7 +4,7 @@ import { catchAsync } from 'catch-async-express';
 import { Router } from 'express';
 import validate from '@/middlewares/validate.middleware';
 import userValidator from '@/validators/user.validator';
-// Import upload middleware
+import commentRoutes from './comment.route';
 import { upload } from '@/services/fileUpload.service';
 
 const router = Router();
@@ -31,6 +31,7 @@ router.post(
     catchAsync(userController.verifyEmailChange)
 );
 
+router.use('/comments', commentRoutes);
 router.get(
     '/profile',
     verifyToken({ strict: true }),

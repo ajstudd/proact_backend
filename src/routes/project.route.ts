@@ -48,10 +48,8 @@ router.get('/file/:filename', async (req, res) => {
     downloadStream.pipe(res);
 });
 
-// Fast search route
 router.get('/fast-search', fastSearchProjectsController);
 
-// Search route
 router.get('/search', searchProjectsController);
 
 router.get('/trimmed', getAllTrimmedProjectsController);
@@ -60,7 +58,6 @@ router.get('/:id', getProjectByIdController);
 router.put('/:id', updateProjectController);
 router.delete('/:id', deleteProjectController);
 
-// Project updates routes
 router.post('/:projectId/updates', addProjectUpdateController);
 router.get('/:projectId/updates', getProjectUpdatesController);
 router.put('/:projectId/updates/:updateId', editProjectUpdateController);

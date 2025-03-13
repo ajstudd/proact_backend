@@ -18,7 +18,7 @@ export interface IUser extends Document {
     email: string;
     role: RoleCode;
     password?: string;
-    photo?: PopulatedDoc<IImage>;
+    photo?: string; // Changed from PopulatedDoc<IImage> to string
     isVerified: boolean;
     lastLogin?: Date;
     resetPasswordToken?: string;

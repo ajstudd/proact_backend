@@ -191,14 +191,12 @@ const editUserProfile = async (userId: string, payload: UpdateUserPayload) => {
 
     // Handle profile photo update
     if (payload.photo) {
-        // Store old photo ID for deletion after successful update
-        const oldPhotoId = user.photo;
-
-        // Set the new photo ID
+        // For photo, we're storing the filename directly rather than an ObjectId
+        // This is different from the schema definition, so we need to update it accordingly
         updateData.photo = payload.photo;
 
-        // If we have an old photo, we'll delete it after the update succeeds
-        // This will be implemented in a more detailed way below
+        // Note: If you want to maintain the ObjectId reference in the future,
+        // you would need to create an Image document first and then reference its _id
     }
 
     // Handle email change with verification

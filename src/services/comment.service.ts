@@ -80,14 +80,14 @@ export const getCommentsByUser = async (userId: string) => {
         const comments = await Comment.find({
             user: userId,
         })
-            .populate('user', 'name email avatar')
+            .populate('user', 'name email photo')
             .populate('likes', '_id')
             .populate('dislikes', '_id')
             .populate({
                 path: 'project',
-                select: 'name location creator',
+                select: 'title location government contractor',
                 populate: {
-                    path: 'creator',
+                    path: 'government',
                     select: 'name email',
                 },
             })
@@ -96,7 +96,7 @@ export const getCommentsByUser = async (userId: string) => {
                 populate: [
                     {
                         path: 'user',
-                        select: 'name email avatar',
+                        select: 'name email photo',
                     },
                     {
                         path: 'likes',
