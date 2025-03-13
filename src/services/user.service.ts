@@ -4,6 +4,8 @@ import { IRequestUser, IUser, UpdateUserPayload } from '../types';
 import { HttpError } from '../helpers/HttpError';
 import { FilterQuery } from 'mongoose';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
+import emailService from './email.service';
 
 const getUserById = async (userId: string) => {
     const user = await User.findById(userId).lean();
@@ -179,6 +181,179 @@ const getBookmarkedProjects = async (userId: string) => {
     return user.bookmarks || [];
 };
 
+const editUserProfile = async (userId: string, payload: UpdateUserPayload) => {
+    const user = await User.findById(userId);
+    if (!user) {
+        throw new HttpError({ message: 'User not found!', code: 404 });
+    }
+
+    const updateData: any = { ...payload };
+
+    // Handle profile photo update
+    if (payload.photo) {
+        // Store old photo ID for deletion after successful update
+        const oldPhotoId = user.photo;
+
+        // Set the new photo ID
+        updateData.photo = payload.photo;
+
+        // If we have an old photo, we'll delete it after the update succeeds
+        // This will be implemented in a more detailed way below
+    }
+
+    // Handle email change with verification
+    if (payload.email && payload.email !== user.email) {
+        // Check if the new email is already taken
+        const emailExists = await User.findOne({ email: payload.email });
+        if (emailExists) {
+            throw new HttpError({ message: 'Email already in use', code: 409 });
+        }
+
+        // Generate verification token
+        const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+
+        // Update user with verification details
+        user.resetPasswordToken = emailVerificationToken;
+        user.resetPasswordExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        // Store new email temporarily for verification
+        user.set('newEmailPending', payload.email);
+        await user.save();
+
+        // Send verification email
+        try {
+            await emailService.sendEmailVerification(
+                payload.email,
+                emailVerificationToken,
+                process.env.FRONTEND_URL || 'http://localhost:3000'
+            );
+
+            // Don't update email directly, it will be updated after verification
+            delete updateData.email;
+        } catch (error) {
+            throw new HttpError({
+                message: 'Failed to send verification email',
+                code: 500,
+            });
+        }
+    }
+
+    // Handle phone change with verification (commented for now)
+    if (payload.phone && payload.phone !== user.phone) {
+        // Check if phone is already taken
+        const phoneExists = await User.findOne({ phone: payload.phone });
+        if (phoneExists) {
+            throw new HttpError({
+                message: 'Phone number already in use',
+                code: 409,
+            });
+        }
+
+        /*
+        // Generate OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Store OTP and set expiry
+        user.resetPasswordToken = otp;
+        user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        
+        // TODO: Integrate with SMS service
+        // await smsService.sendSMS({
+        //     to: payload.phone,
+        //     message: `Your verification code is: ${otp}`
+        // });
+        
+        // Don't update phone directly
+        delete updateData.phone;
+        
+        // Store new phone temporarily for verification
+        user.set('newPhonePending', payload.phone);
+        await user.save();
+        */
+        // For now, update phone directly without verification
+    }
+
+    // Handle password update
+    if (payload.password) {
+        updateData.password = bcrypt.hashSync(payload.password, 10);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+        new: true,
+    }).lean();
+
+    // If we successfully updated the user and there was a photo change, we could
+    // delete the old photo from GridFS here if needed
+    // This would involve:
+    // 1. Check if oldPhotoId exists
+    // 2. Call a function to delete the file from GridFS
+
+    return getUserProfileData(updatedUser as IUser);
+};
+
+const verifyEmailUpdate = async (token: string, email: string) => {
+    const user = await User.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+        throw new HttpError({ message: 'Invalid or expired token', code: 400 });
+    }
+
+    if (!user.get('newEmailPending') || user.get('newEmailPending') !== email) {
+        throw new HttpError({
+            message: 'Invalid email verification request',
+            code: 400,
+        });
+    }
+
+    // Check if email is already taken by another user
+    const emailExists = await User.findOne({
+        email,
+        _id: { $ne: user._id },
+    });
+
+    if (emailExists) {
+        throw new HttpError({ message: 'Email already in use', code: 409 });
+    }
+
+    // Update the email with the new one
+    user.email = email;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    user.set('newEmailPending', undefined);
+    user.isVerified = true; // Mark user as verified
+
+    await user.save();
+
+    return getUserProfileData(user);
+};
+
+const getUserProfileData = (user: IUser) => {
+    // Return only necessary fields for profile
+    const {
+        password,
+        resetPasswordToken,
+        resetPasswordExpires,
+        ...safeUserData
+    } = user;
+
+    return safeUserData;
+};
+
+const getUserProfile = async (userId: string) => {
+    const user = await User.findById(userId)
+        .select('-password -resetPasswordToken -resetPasswordExpires')
+        .lean();
+
+    if (!user) {
+        throw new HttpError({ message: 'User not found!', code: 404 });
+    }
+
+    return user;
+};
+
 export default {
     updateUser,
     getUserById,
@@ -192,4 +367,7 @@ export default {
     bookmarkProject,
     removeBookmark,
     getBookmarkedProjects,
+    editUserProfile,
+    verifyEmailUpdate,
+    getUserProfile,
 };

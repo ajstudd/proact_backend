@@ -30,6 +30,8 @@ export interface IUser extends Document {
     contributions: number;
     experience: number;
     reputationScore?: number;
+    newEmailPending?: string;
+    newPhonePending?: string;
     bookmarks?: Array<string | ObjectId>;
     createdAt: Date;
     updatedAt: Date;

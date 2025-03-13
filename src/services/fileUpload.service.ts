@@ -110,4 +110,31 @@ export const uploadFile = async (
     }
 };
 
+// Function to delete a file from GridFS by filename
+export const deleteFileFromGridFS = async (
+    filename: string
+): Promise<boolean> => {
+    try {
+        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+            bucketName: 'uploads',
+        });
+
+        // Find the file by filename
+        const files = await bucket.find({ filename }).toArray();
+
+        if (files.length === 0) {
+            console.warn(`File with filename ${filename} not found in GridFS`);
+            return false;
+        }
+
+        // Delete the file
+        await bucket.delete(files[0]._id);
+        console.log(`Successfully deleted file: ${filename}`);
+        return true;
+    } catch (err) {
+        console.error('Error deleting file from GridFS:', err);
+        return false;
+    }
+};
+
 export { upload };

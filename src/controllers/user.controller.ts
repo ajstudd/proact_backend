@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import userService from '@/services/user.service';
 import { HttpError } from '@/helpers/HttpError';
+import { uploadFile } from '@/services/fileUpload.service';
 
 export const updateUser = async (req: Request, res: Response) => {
     try {
@@ -37,7 +38,6 @@ export const getUserByEmail = async (req: Request, res: Response) => {
     }
 };
 
-/** 📞 Get User by Phone */
 export const getUserByPhone = async (req: Request, res: Response) => {
     try {
         const user = await userService.getUserByPhone(req.params.phone);
@@ -169,6 +169,74 @@ export const getBookmarkedProjects = async (req: Request, res: Response) => {
     }
 };
 
+export const editProfile = async (req: Request, res: Response) => {
+    try {
+        // Check if file is there
+        const file = req.file;
+        let photoId;
+
+        if (file) {
+            const uploadedFile = await uploadFile(file);
+            photoId = uploadedFile.filename;
+        }
+
+        const payload = {
+            ...req.body,
+            ...(photoId && { photo: photoId }),
+        };
+
+        const updatedUser = await userService.editUserProfile(
+            req.user!.id,
+            payload
+        );
+
+        let message = 'Profile updated successfully';
+        if (req.body.email && req.body.email !== req.user!.email) {
+            message =
+                'Profile updated. Please check your email to verify your new email address';
+        }
+
+        return res.status(200).json({
+            message,
+            user: updatedUser,
+        });
+    } catch (error) {
+        const err = error as { code?: number; message: string };
+        return res.status(err.code || 500).json({ message: err.message });
+    }
+};
+
+export const verifyEmailChange = async (req: Request, res: Response) => {
+    try {
+        const { token, email } = req.body;
+        if (!token || !email) {
+            throw new HttpError({
+                message: 'Token and email are required',
+                code: 400,
+            });
+        }
+
+        const user = await userService.verifyEmailUpdate(token, email);
+        return res.status(200).json({
+            message: 'Email verified successfully',
+            user,
+        });
+    } catch (error) {
+        const err = error as { code?: number; message: string };
+        return res.status(err.code || 500).json({ message: err.message });
+    }
+};
+
+export const getProfile = async (req: Request, res: Response) => {
+    try {
+        const profile = await userService.getUserProfile(req.user!.id);
+        return res.status(200).json(profile);
+    } catch (error) {
+        const err = error as { code?: number; message: string };
+        return res.status(err.code || 500).json({ message: err.message });
+    }
+};
+
 export default {
     updateUser,
     getUserById,
@@ -182,4 +250,7 @@ export default {
     bookmarkProject,
     removeBookmark,
     getBookmarkedProjects,
+    editProfile,
+    verifyEmailChange,
+    getProfile,
 };

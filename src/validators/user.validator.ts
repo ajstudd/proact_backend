@@ -56,11 +56,26 @@ const verifyOtp = Joi.alternatives()
     .try(userPhoneVerifyPayload, userEmailVerifyPayload)
     .required();
 
+const editProfile = Joi.object<UpdateUserPayload>({
+    name: Joi.string().optional(),
+    email: Joi.string().email().optional(),
+    phone: Joi.string().phoneNumber({ format: 'e164' }).optional(),
+    password: Joi.string().min(6).optional(),
+    photo: Joi.string().optional(), // ID of uploaded image
+});
+
+const verifyEmailChange = Joi.object({
+    token: Joi.string().required(),
+    email: Joi.string().email().required(),
+});
+
 export default {
     register,
     login,
     update,
     verifyOtp,
+    editProfile,
+    verifyEmailChange,
     // refreshToken,
     // forgotPassword,
     // resetPassword,

@@ -15,7 +15,6 @@ export const createReport = async (req: CustomRequest, res: Response) => {
             });
         }
 
-        // Get user ID if user is logged in
         const userId = req.user?.id;
 
         const files = req.files as
@@ -24,7 +23,6 @@ export const createReport = async (req: CustomRequest, res: Response) => {
               }
             | undefined;
 
-        // Use the enhanced service with either file or attachment details
         const report = await corruptionReportService.createCorruptionReport({
             projectId,
             description,
@@ -154,7 +152,6 @@ export const getReportById = async (req: Request, res: Response) => {
     try {
         const { reportId } = req.params;
 
-        // Get userId if user is authenticated
         const userId = req.user?.id;
 
         const report = await corruptionReportService.getReportById(

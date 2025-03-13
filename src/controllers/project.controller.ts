@@ -27,21 +27,18 @@ export const createProjectController = async (
         };
         console.log('files', files);
 
-        // Process banner upload if it exists
         let bannerUrl = '';
         if (files && files.banner && files.banner.length > 0) {
             const bannerResult = await uploadFile(files.banner[0]);
             bannerUrl = bannerResult.url;
         }
 
-        // Process PDF upload if it exists
         let pdfUrl = '';
         if (files && files.pdf && files.pdf.length > 0) {
             const pdfResult = await uploadFile(files.pdf[0]);
             pdfUrl = pdfResult.url;
         }
 
-        // Create project with form data and file URLs
         const projectData = {
             ...req.body,
             bannerUrl,
@@ -234,10 +231,10 @@ export const searchProjectsController = async (req: Request, res: Response) => {
             sortOrder: (sortOrder as 'asc' | 'desc') || 'desc',
         };
 
-        // Extract filters if any
+        // Take out filters if any
         const filterParams: Record<string, any> = {};
 
-        // Process budget range if provided
+        // Process budget range if given
         if (filters.minBudget || filters.maxBudget) {
             filterParams.budget = {};
             if (filters.minBudget) {
@@ -252,7 +249,7 @@ export const searchProjectsController = async (req: Request, res: Response) => {
             }
         }
 
-        // Process location filter if provided
+        // Process location filter if given
         if (filters.location) {
             filterParams['location.place'] = new RegExp(
                 filters.location as string,
@@ -260,7 +257,7 @@ export const searchProjectsController = async (req: Request, res: Response) => {
             );
         }
 
-        // Process date ranges if provided
+        // Process date ranges if there are any
         if (filters.startDate || filters.endDate) {
             filterParams.createdAt = {};
             if (filters.startDate) {
@@ -277,7 +274,7 @@ export const searchProjectsController = async (req: Request, res: Response) => {
 
         let result;
 
-        // Determine if this is a search or just filtering
+        // check if this is a search or just filtering
         if (query) {
             result = await searchProjects(query as string, {
                 ...searchOptions,
@@ -315,7 +312,7 @@ export const fastSearchProjectsController = async (
             page,
         } = req.query;
 
-        // Parse pagination parameters
+        // Get through pagination parameters
         const searchOptions = {
             limit: limit ? parseInt(limit as string) : 20,
             skip: page
@@ -324,7 +321,7 @@ export const fastSearchProjectsController = async (
                 : 0,
         };
 
-        // Build search parameters
+        // Create search parameters
         const searchParams: any = {};
 
         if (title) searchParams.title = title as string;
@@ -332,7 +329,7 @@ export const fastSearchProjectsController = async (
         if (location) searchParams.location = location as string;
         if (id) searchParams.id = id as string;
 
-        // Handle date parameters
+        // Handle date filters
         if (startDate || endDate) {
             searchParams.date = {};
             if (startDate) searchParams.date.startDate = startDate;

@@ -55,6 +55,14 @@ const UserSchema = new Schema<IUser>(
             type: Date,
             select: false,
         },
+        newEmailPending: {
+            type: String,
+            select: false,
+        },
+        newPhonePending: {
+            type: String,
+            select: false,
+        },
         governmentId: {
             type: String,
             required() {

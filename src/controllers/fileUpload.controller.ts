@@ -27,7 +27,7 @@ export const getFile = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'File not found!' });
         });
 
-        res.set('Content-Type', 'application/octet-stream'); // Automatically detect type
+        res.set('Content-Type', 'application/octet-stream');
         fileStream.pipe(res);
     } catch (err) {
         return res.status(500).json({ message: 'Internal Server Error!' });
@@ -62,7 +62,7 @@ export const deleteFile = async (req: Request, res: Response) => {
 export const listFiles = async (req: Request, res: Response) => {
     try {
         const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
-            bucketName: 'uploads', // Bucket name same as upload ke waqt
+            bucketName: 'uploads',
         });
 
         const files = await bucket.find().toArray(); // Saare files ko fetch karta hai
