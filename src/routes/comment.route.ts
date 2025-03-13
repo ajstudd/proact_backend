@@ -6,6 +6,7 @@ import {
     deleteCommentController,
     likeCommentController,
     dislikeCommentController,
+    getCommentsByUserController,
 } from '@/controllers/comment.controller';
 import { authMiddleware, UserRole } from '../middlewares/auth.middleware';
 import { isCommentOwnerMiddleware } from '../middlewares/comment.middleware';
@@ -40,6 +41,11 @@ router.post(
     '/:commentId/dislike',
     authMiddleware([UserRole.USER, UserRole.CONTRACTOR, UserRole.GOVERNMENT]),
     dislikeCommentController
+);
+router.get(
+    '/user/:userId',
+    authMiddleware([UserRole.USER, UserRole.CONTRACTOR, UserRole.GOVERNMENT]),
+    getCommentsByUserController
 );
 
 export default router;

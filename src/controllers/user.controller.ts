@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import userService from '@/services/user.service';
 import { HttpError } from '@/helpers/HttpError';
 
-/** ✏️ Update User */
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const updatedUser = await userService.updateUser(
@@ -18,7 +17,6 @@ export const updateUser = async (req: Request, res: Response) => {
     }
 };
 
-/** 🔍 Get User by ID */
 export const getUserById = async (req: Request, res: Response) => {
     try {
         const user = await userService.getUserById(req.params.id);
@@ -29,7 +27,6 @@ export const getUserById = async (req: Request, res: Response) => {
     }
 };
 
-/** 🔎 Get User by Email */
 export const getUserByEmail = async (req: Request, res: Response) => {
     try {
         const user = await userService.getUserByEmail(req.params.email);
@@ -51,7 +48,6 @@ export const getUserByPhone = async (req: Request, res: Response) => {
     }
 };
 
-/** 🔍 Get User by Email or Phone */
 export const getUserByEmailOrPhone = async (req: Request, res: Response) => {
     try {
         const { email, phone } = req.query;
@@ -66,7 +62,6 @@ export const getUserByEmailOrPhone = async (req: Request, res: Response) => {
     }
 };
 
-/** 🛠️ Create New User */
 export const createUser = async (req: Request, res: Response) => {
     try {
         const newUser = await userService.createUser(req.body);
@@ -79,7 +74,6 @@ export const createUser = async (req: Request, res: Response) => {
     }
 };
 
-/** 🔍 Get Multiple Users by ID */
 export const getUsersByIds = async (req: Request, res: Response) => {
     try {
         const userIds = req.body.userIds as string[];
@@ -94,7 +88,6 @@ export const getUsersByIds = async (req: Request, res: Response) => {
     }
 };
 
-/** ⭐ Update User Score */
 export const updateUserScore = async (req: Request, res: Response) => {
     try {
         const { score } = req.body;
@@ -114,11 +107,62 @@ export const updateUserScore = async (req: Request, res: Response) => {
     }
 };
 
-/** ❌ Delete User */
 export const deleteUserById = async (req: Request, res: Response) => {
     try {
         await userService.deleteUserById(req.params.id);
         return res.status(200).json({ message: 'User deleted successfully' });
+    } catch (error) {
+        const err = error as { code?: number; message: string };
+        return res.status(err.code || 500).json({ message: err.message });
+    }
+};
+
+export const bookmarkProject = async (req: Request, res: Response) => {
+    try {
+        const { projectId } = req.body;
+        if (!projectId) {
+            throw new HttpError({
+                message: 'Project ID is required',
+                code: 400,
+            });
+        }
+
+        const result = await userService.bookmarkProject(
+            req.user!.id,
+            projectId
+        );
+        return res.status(200).json(result);
+    } catch (error) {
+        const err = error as { code?: number; message: string };
+        return res.status(err.code || 500).json({ message: err.message });
+    }
+};
+
+export const removeBookmark = async (req: Request, res: Response) => {
+    try {
+        const { projectId } = req.params;
+        if (!projectId) {
+            throw new HttpError({
+                message: 'Project ID is required',
+                code: 400,
+            });
+        }
+
+        const result = await userService.removeBookmark(
+            req.user!.id,
+            projectId
+        );
+        return res.status(200).json(result);
+    } catch (error) {
+        const err = error as { code?: number; message: string };
+        return res.status(err.code || 500).json({ message: err.message });
+    }
+};
+
+export const getBookmarkedProjects = async (req: Request, res: Response) => {
+    try {
+        const bookmarks = await userService.getBookmarkedProjects(req.user!.id);
+        return res.status(200).json({ bookmarks });
     } catch (error) {
         const err = error as { code?: number; message: string };
         return res.status(err.code || 500).json({ message: err.message });
@@ -135,4 +179,7 @@ export default {
     getUsersByIds,
     updateUserScore,
     deleteUserById,
+    bookmarkProject,
+    removeBookmark,
+    getBookmarkedProjects,
 };

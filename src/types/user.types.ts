@@ -30,6 +30,7 @@ export interface IUser extends Document {
     contributions: number;
     experience: number;
     reputationScore?: number;
+    bookmarks?: Array<string | ObjectId>;
     createdAt: Date;
     updatedAt: Date;
 }

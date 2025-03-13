@@ -3,6 +3,7 @@ import User from '../models/user.model';
 import { IRequestUser, IUser, UpdateUserPayload } from '../types';
 import { HttpError } from '../helpers/HttpError';
 import { FilterQuery } from 'mongoose';
+import mongoose from 'mongoose';
 
 const getUserById = async (userId: string) => {
     const user = await User.findById(userId).lean();
@@ -106,6 +107,78 @@ const deleteUserById = async (userId: string) => {
     return { message: 'User deleted successfully' };
 };
 
+const bookmarkProject = async (userId: string, projectId: string) => {
+    // Validate projectId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+        throw new HttpError({ message: 'Invalid project ID', code: 400 });
+    }
+
+    const user = await User.findByIdAndUpdate(
+        userId,
+        { $addToSet: { bookmarks: projectId } }, // Using $addToSet to avoid duplicates
+        { new: true }
+    )
+        .populate({
+            path: 'bookmarks',
+            select: 'title bannerUrl description location budget createdAt',
+        })
+        .lean();
+
+    if (!user) {
+        throw new HttpError({ message: 'User not found!', code: 404 });
+    }
+
+    return {
+        message: 'Project bookmarked successfully',
+        bookmarks: user.bookmarks,
+    };
+};
+
+const removeBookmark = async (userId: string, projectId: string) => {
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+        throw new HttpError({ message: 'Invalid project ID', code: 400 });
+    }
+
+    const user = await User.findByIdAndUpdate(
+        userId,
+        { $pull: { bookmarks: projectId } },
+        { new: true }
+    )
+        .populate({
+            path: 'bookmarks',
+            select: 'title bannerUrl description location budget createdAt',
+        })
+        .lean();
+
+    if (!user) {
+        throw new HttpError({ message: 'User not found!', code: 404 });
+    }
+
+    return {
+        message: 'Bookmark removed successfully',
+        bookmarks: user.bookmarks,
+    };
+};
+
+const getBookmarkedProjects = async (userId: string) => {
+    const user = await User.findById(userId)
+        .populate({
+            path: 'bookmarks',
+            select: 'title bannerUrl description location budget contractor government createdAt updatedAt',
+            populate: [
+                { path: 'contractor', select: 'name _id' },
+                { path: 'government', select: 'name _id' },
+            ],
+        })
+        .lean();
+
+    if (!user) {
+        throw new HttpError({ message: 'User not found!', code: 404 });
+    }
+
+    return user.bookmarks || [];
+};
+
 export default {
     updateUser,
     getUserById,
@@ -116,4 +189,7 @@ export default {
     getUserByPhone,
     getUserByEmailOrPhone,
     deleteUserById,
+    bookmarkProject,
+    removeBookmark,
+    getBookmarkedProjects,
 };

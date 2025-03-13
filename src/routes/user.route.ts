@@ -11,4 +11,23 @@ router.patch(
     catchAsync(userController.updateUser)
 );
 
+// Bookmark routes
+router.post(
+    '/bookmarks',
+    verifyToken({ strict: true }),
+    catchAsync(userController.bookmarkProject)
+);
+
+router.get(
+    '/bookmarks',
+    verifyToken({ strict: true }),
+    catchAsync(userController.getBookmarkedProjects)
+);
+
+router.delete(
+    '/bookmarks/:projectId',
+    verifyToken({ strict: true }),
+    catchAsync(userController.removeBookmark)
+);
+
 export default router;

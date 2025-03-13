@@ -74,6 +74,48 @@ export const getCommentsByProject = async (projectId: string) => {
     }
 };
 
+export const getCommentsByUser = async (userId: string) => {
+    try {
+        // Get all comments made by a user
+        const comments = await Comment.find({
+            user: userId,
+        })
+            .populate('user', 'name email avatar')
+            .populate('likes', '_id')
+            .populate('dislikes', '_id')
+            .populate({
+                path: 'project',
+                select: 'name location creator',
+                populate: {
+                    path: 'creator',
+                    select: 'name email',
+                },
+            })
+            .populate({
+                path: 'replies',
+                populate: [
+                    {
+                        path: 'user',
+                        select: 'name email avatar',
+                    },
+                    {
+                        path: 'likes',
+                        select: '_id',
+                    },
+                    {
+                        path: 'dislikes',
+                        select: '_id',
+                    },
+                ],
+            })
+            .sort({ createdAt: -1 });
+
+        return comments;
+    } catch (error) {
+        throw error;
+    }
+};
+
 export const updateComment = async (commentId: string, content: string) => {
     try {
         const comment = await Comment.findByIdAndUpdate(

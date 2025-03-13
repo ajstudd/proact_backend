@@ -55,7 +55,6 @@ const UserSchema = new Schema<IUser>(
             type: Date,
             select: false,
         },
-
         governmentId: {
             type: String,
             required() {
@@ -90,6 +89,12 @@ const UserSchema = new Schema<IUser>(
             type: Number,
             default: 0,
         },
+        bookmarks: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: 'Project',
+            },
+        ],
     },
     {
         timestamps: true,

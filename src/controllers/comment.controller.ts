@@ -7,6 +7,7 @@ import {
     deleteComment,
     likeComment,
     dislikeComment,
+    getCommentsByUser,
 } from '@/services/comment.service';
 
 export const createCommentController = async (req: Request, res: Response) => {
@@ -138,6 +139,30 @@ export const dislikeCommentController = async (req: Request, res: Response) => {
         });
     } catch (err: any) {
         console.log('Error in dislikeCommentController:', err);
+        res.status(500).json({
+            message: err.message || 'Internal Server Error!',
+        });
+    }
+};
+
+export const getCommentsByUserController = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+        const { userId } = req.params;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
+
+        const comments = await getCommentsByUser(userId);
+
+        res.status(200).json({
+            comments,
+        });
+    } catch (err: any) {
+        console.log('Error in getCommentsByUserController:', err);
         res.status(500).json({
             message: err.message || 'Internal Server Error!',
         });
