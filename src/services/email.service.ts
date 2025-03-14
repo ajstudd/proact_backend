@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer';
+
 interface EmailOptions {
     to: string;
     subject: string;
@@ -6,88 +8,74 @@ interface EmailOptions {
     from?: string;
 }
 
+let transporter: nodemailer.Transporter;
+
+/**
+ * Initializes the email service with nodemailer transporter
+ */
+const init = async (): Promise<void> => {
+    try {
+        transporter = nodemailer.createTransport({
+            host: process.env.NODEMAILER_HOST,
+            port: Number(process.env.NODEMAILER_PORT),
+            secure: JSON.parse(process.env.NODEMAILER_SECURE ?? 'false'),
+            requireTLS: JSON.parse(
+                process.env.NODEMAILER_REQUIRE_TLS ?? 'false'
+            ),
+            auth: {
+                user: process.env.NODEMAILER_USER,
+                pass: process.env.NODEMAILER_PASSWORD,
+            },
+        });
+
+        // Verify the connection
+        await transporter.verify();
+        console.log('Email service initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize email transporter:', error);
+        throw new Error('Email service initialization failed');
+    }
+};
+
 /**
  * Service for sending emails
  */
 const sendMail = async (options: EmailOptions): Promise<void> => {
     try {
-        // Get email configuration from environment variables
-        const fromEmail =
-            options.from || process.env.EMAIL_FROM || 'noreply@proact.com';
-
-        // For development, log the email
-        if (process.env.NODE_ENV !== 'production') {
-            console.log('====== EMAIL WOULD BE SENT =====');
-            console.log('From:', fromEmail);
-            console.log('To:', options.to);
-            console.log('Subject:', options.subject);
-            console.log('Text:', options.text);
-            if (options.html) console.log('HTML:', options.html);
-            console.log('===============================');
-            return;
+        // Ensure transporter is initialized
+        if (!transporter) {
+            console.log(
+                'Email transporter not initialized, initializing now...'
+            );
+            await init();
         }
 
-        // Implementation with preferred email provider
-        // Uncomment and use one of the following implementations:
+        // Get email configuration from environment variables
+        const fromEmail =
+            options.from || process.env.NODEMAILER_FROM || 'noreply@proact.com';
 
-        /* NODEMAILER IMPLEMENTATION
-        const nodemailer = require('nodemailer');
-        
-        const transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST,
-            port: parseInt(process.env.EMAIL_PORT || '587'),
-            secure: process.env.EMAIL_SECURE === 'true',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASSWORD,
-            },
-        });
+        // Log the email being sent
+        console.log(
+            `Sending email to: ${options.to}, subject: ${options.subject}`
+        );
 
-        await transporter.sendMail({
+        // Send email using nodemailer
+        const info = await transporter.sendMail({
             from: fromEmail,
             to: options.to,
             subject: options.subject,
             text: options.text,
             html: options.html,
         });
-        */
 
-        /* SENDGRID IMPLEMENTATION
-        const sgMail = require('@sendgrid/mail');
-        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-        
-        await sgMail.send({
-            from: fromEmail,
-            to: options.to,
-            subject: options.subject,
-            text: options.text,
-            html: options.html,
-        });
-        */
-
-        /* AWS SES IMPLEMENTATION 
-        const AWS = require('aws-sdk');
-        const SES = new AWS.SES({
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-            region: process.env.AWS_REGION
-        });
-        
-        await SES.sendEmail({
-            Source: fromEmail,
-            Destination: { ToAddresses: [options.to] },
-            Message: {
-                Subject: { Data: options.subject },
-                Body: {
-                    Text: { Data: options.text },
-                    ...(options.html && { Html: { Data: options.html } })
-                }
-            }
-        }).promise();
-        */
+        console.log('Email sent successfully:', info.messageId);
     } catch (error) {
         console.error('Email sending failed:', error);
-        throw new Error('Failed to send email');
+        if (error instanceof Error) {
+            throw new Error(`Failed to send email: ${error.message}`);
+        } else {
+            throw new Error('Failed to send email: Unknown error');
+        }
     }
 };
 
@@ -127,6 +115,7 @@ const sendEmailVerification = async (
 };
 
 export default {
+    init,
     sendMail,
     sendEmailVerification,
 };

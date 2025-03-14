@@ -209,6 +209,8 @@ export const editProfile = async (req: Request, res: Response) => {
 export const verifyEmailChange = async (req: Request, res: Response) => {
     try {
         const { token, email } = req.body;
+        console.log('email', email);
+        console.log('token', token);
         if (!token || !email) {
             throw new HttpError({
                 message: 'Token and email are required',

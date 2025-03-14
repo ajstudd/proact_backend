@@ -293,20 +293,22 @@ const verifyEmailUpdate = async (token: string, email: string) => {
     const user = await User.findOne({
         resetPasswordToken: token,
         resetPasswordExpires: { $gt: Date.now() },
-    });
+    }).select('+newEmailPending');
+    //did select because newEmailPending was set as select false in the schema, so we need to select it to get the value
 
     if (!user) {
         throw new HttpError({ message: 'Invalid or expired token', code: 400 });
     }
 
-    if (!user.get('newEmailPending') || user.get('newEmailPending') !== email) {
+    const pendingEmail = user.get('newEmailPending');
+
+    if (!pendingEmail || pendingEmail !== email) {
         throw new HttpError({
             message: 'Invalid email verification request',
             code: 400,
         });
     }
 
-    // Check if email is already taken by another user
     const emailExists = await User.findOne({
         email,
         _id: { $ne: user._id },
@@ -316,20 +318,18 @@ const verifyEmailUpdate = async (token: string, email: string) => {
         throw new HttpError({ message: 'Email already in use', code: 409 });
     }
 
-    // Update the email with the new one
     user.email = email;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     user.set('newEmailPending', undefined);
-    user.isVerified = true; // Mark user as verified
+    user.isVerified = true;
 
     await user.save();
 
-    return getUserProfileData(user);
+    return getUserProfileData(user.toObject());
 };
 
 const getUserProfileData = (user: IUser) => {
-    // Return only necessary fields for profile
     const {
         password,
         resetPasswordToken,

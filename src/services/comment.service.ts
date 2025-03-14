@@ -85,7 +85,7 @@ export const getCommentsByUser = async (userId: string) => {
             .populate('dislikes', '_id')
             .populate({
                 path: 'project',
-                select: 'title location government contractor',
+                select: 'title location government contractor bannerUrl',
                 populate: {
                     path: 'government',
                     select: 'name email',
