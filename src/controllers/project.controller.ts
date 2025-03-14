@@ -14,6 +14,7 @@ import {
     searchProjects,
     filterProjects,
     fastSearch,
+    getContractorsForGovernment,
 } from '@/services/project.service';
 import { uploadFile } from '../services/fileUpload.service';
 
@@ -39,10 +40,12 @@ export const createProjectController = async (
             pdfUrl = pdfResult.url;
         }
 
+        // Use the authenticated user's ID as the government ID
         const projectData = {
             ...req.body,
             bannerUrl,
             pdfUrl,
+            government: req.user ? req.user.id : null, // Get the user ID from the auth middleware
         };
 
         const project = await createProject(projectData);
@@ -117,7 +120,8 @@ export const getAllTrimmedProjectsController = async (
     res: Response
 ) => {
     try {
-        const projects = await getAllTrimmedProjects();
+        const userId = req.query.userId as string;
+        const projects = await getAllTrimmedProjects(userId);
         res.status(200).json({ projects });
     } catch (err) {
         console.log(err);
@@ -344,6 +348,29 @@ export const fastSearchProjectsController = async (
         });
     } catch (err: any) {
         console.log('Error in fastSearchProjectsController:', err);
+        res.status(500).json({
+            message: err.message || 'Internal Server Error!',
+        });
+    }
+};
+
+export const getContractorsForGovernmentController = async (
+    req: CustomRequest,
+    res: Response
+) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+        const governmentId = req.user.id; // Get the user ID from auth middleware
+        const contractors = await getContractorsForGovernment(governmentId);
+
+        res.status(200).json({
+            contractors,
+            message: 'Contractors fetched successfully',
+        });
+    } catch (err: any) {
+        console.log('Error in getContractorsForGovernmentController:', err);
         res.status(500).json({
             message: err.message || 'Internal Server Error!',
         });

@@ -117,27 +117,34 @@ export const getAllProjects = async () => {
     }
 };
 
-export const getAllTrimmedProjects = async () => {
+export const getAllTrimmedProjects = async (userId?: string) => {
     try {
+        // Filter query - if userId is provided, filter for projects where
+        // the user is either the government or contractor
+        const filter: any = {};
+        if (userId) {
+            filter.$or = [{ government: userId }, { contractor: userId }];
+        }
+
         // Only select the fields we want to return
-        const projects = await Project.find(
-            {},
-            {
-                title: 1,
-                bannerUrl: 1,
-                description: 1,
-                location: 1,
-                budget: 1,
-                expenditure: 1,
-                likes: 1,
-                dislikes: 1,
-                associatedProfiles: 1,
-                contractor: 1,
-                government: 1,
-                createdAt: 1,
-                updatedAt: 1,
-            }
-        );
+        const projects = await Project.find(filter, {
+            title: 1,
+            bannerUrl: 1,
+            description: 1,
+            location: 1,
+            budget: 1,
+            expenditure: 1,
+            likes: 1,
+            dislikes: 1,
+            associatedProfiles: 1,
+            contractor: 1,
+            government: 1,
+            createdAt: 1,
+            updatedAt: 1,
+        })
+            .populate('contractor', 'name _id')
+            .populate('government', 'name _id');
+
         return projects;
     } catch (error) {
         console.log(error);
@@ -489,5 +496,34 @@ export const fastSearch = async (
     } catch (error) {
         console.log('Error in fastSearch service:', error);
         throw new Error('Fast project search failed!');
+    }
+};
+
+export const getContractorsForGovernment = async (governmentId: string) => {
+    try {
+        // Find all projects where the government ID matches
+        const projects = await Project.find({
+            government: governmentId,
+        }).populate('contractor', 'name _id email photo');
+
+        // Extract unique contractors from the projects
+        const contractorsMap = new Map();
+
+        projects.forEach((project) => {
+            if (project.contractor) {
+                contractorsMap.set(
+                    project.contractor._id.toString(),
+                    project.contractor
+                );
+            }
+        });
+
+        // Convert map values to array
+        const contractors = Array.from(contractorsMap.values());
+
+        return contractors;
+    } catch (error) {
+        console.log('Error in getContractorsForGovernment service:', error);
+        throw new Error('Fetching contractors failed!');
     }
 };
