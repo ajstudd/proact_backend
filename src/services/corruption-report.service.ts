@@ -7,6 +7,7 @@ import {
     analyzeCorruptionReport,
 } from './ai-analysis.service';
 import { uploadFile } from './fileUpload.service';
+import notificationService from './notification.service';
 
 interface CreateReportParams {
     projectId: string;
@@ -224,6 +225,34 @@ export const updateReportStatus = async (
             updateData,
             { new: true }
         );
+
+        // Send notification to the user who reported if not anonymous
+        if (report.reportedBy && report.reportedBy.userId && !report.reportedBy.isAnonymous) {
+            const projectTitle = project.title || 'a project';
+            const statusMap: Record<string, string> = {
+                investigating: 'is now being investigated',
+                resolved: 'has been resolved',
+                rejected: 'has been rejected',
+                pending: 'is pending review'
+            };
+
+            const messageText = `Your report for ${projectTitle} ${statusMap[status]}`;
+
+            await notificationService.createNotification({
+                recipientId: report.reportedBy.userId.toString(),
+                senderId: userId,
+                type: 'PROJECT_UPDATE',
+                message: messageText,
+                entityId: reportId,
+                entityType: 'Project',
+                metadata: {
+                    projectId: project._id,
+                    projectTitle: projectTitle,
+                    reportStatus: status,
+                    rejectionReason: rejectionReason
+                },
+            });
+        }
 
         return updatedReport;
     } catch (error) {

@@ -1,4 +1,5 @@
 import Project from '../models/project.model';
+import notificationService from './notification.service';
 
 export const likeProject = async (projectId: string, userId: string) => {
     try {
@@ -12,7 +13,31 @@ export const likeProject = async (projectId: string, userId: string) => {
             projectId,
             { $addToSet: { likes: userId } },
             { new: true }
-        ).populate('likes dislikes');
+        ).populate('likes dislikes government');
+
+        // Send notification to project creator (government) when someone likes their project
+        if (
+            updatedProject &&
+            updatedProject &&
+            updatedProject &&
+            updatedProject &&
+            updatedProject &&
+            updatedProject.government &&
+            userId !== updatedProject.government._id.toString()
+        ) {
+            await notificationService.createNotification({
+                recipientId: updatedProject.government._id.toString(),
+                senderId: userId,
+                type: 'PROJECT_UPDATE',
+                message: `Someone liked your project: ${updatedProject.title}`,
+                entityId: projectId,
+                entityType: 'Project',
+                metadata: {
+                    projectTitle: updatedProject ? updatedProject.title : '',
+                    action: 'like',
+                },
+            });
+        }
 
         return updatedProject;
     } catch (error) {
@@ -32,7 +57,27 @@ export const dislikeProject = async (projectId: string, userId: string) => {
             projectId,
             { $addToSet: { dislikes: userId } },
             { new: true }
-        ).populate('likes dislikes');
+        ).populate('likes dislikes government');
+
+        // Send notification to project creator (government) when someone dislikes their project
+        if (
+            updatedProject &&
+            updatedProject.government &&
+            userId !== updatedProject.government._id.toString()
+        ) {
+            await notificationService.createNotification({
+                recipientId: updatedProject.government._id.toString(),
+                senderId: userId,
+                type: 'PROJECT_UPDATE',
+                message: `Someone disliked your project: ${updatedProject.title}`,
+                entityId: projectId,
+                entityType: 'Project',
+                metadata: {
+                    projectTitle: updatedProject.title,
+                    action: 'dislike',
+                },
+            });
+        }
 
         return updatedProject;
     } catch (error) {

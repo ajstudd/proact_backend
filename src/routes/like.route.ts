@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { verifyToken } from '@/middlewares/verifyToken.middleware';
 import {
     likeProjectController,
     dislikeProjectController,
@@ -9,9 +10,25 @@ import {
 const router = Router();
 
 // Like/dislike routes
-router.post('/:projectId/like', likeProjectController);
-router.post('/:projectId/dislike', dislikeProjectController);
-router.post('/:projectId/unlike', unlikeProjectController);
-router.post('/:projectId/undislike', undislikeProjectController);
+router.post(
+    '/:projectId/like',
+    verifyToken({ strict: true }),
+    likeProjectController
+);
+router.post(
+    '/:projectId/dislike',
+    verifyToken({ strict: true }),
+    dislikeProjectController
+);
+router.post(
+    '/:projectId/unlike',
+    verifyToken({ strict: true }),
+    unlikeProjectController
+);
+router.post(
+    '/:projectId/undislike',
+    verifyToken({ strict: true }),
+    undislikeProjectController
+);
 
 export default router;

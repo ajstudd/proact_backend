@@ -86,13 +86,13 @@ export const getProjectById = async (projectId: string) => {
                 populate: [
                     {
                         path: 'user',
-                        select: 'name _id photo.url',
+                        select: 'name _id photo',
                     },
                     {
                         path: 'replies',
                         populate: {
                             path: 'user',
-                            select: 'name _id photo.url',
+                            select: 'name _id photo',
                         },
                     },
                 ],

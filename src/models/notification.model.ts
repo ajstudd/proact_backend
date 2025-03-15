@@ -38,6 +38,9 @@ const NotificationSchema = new Schema<INotification>(
                 'ADMIN_MESSAGE',
                 'PROJECT_INVITE',
                 'FEEDBACK_RESPONSE',
+                'REPORT_STATUS',
+                'LIKE',
+                'DISLIKE',
             ],
         },
         message: {
@@ -55,7 +58,7 @@ const NotificationSchema = new Schema<INotification>(
         },
         entityType: {
             type: String,
-            enum: ['Project', 'User', 'Comment', 'Feedback'],
+            enum: ['Project', 'User', 'Comment', 'Feedback', 'Report'],
         },
         metadata: {
             type: Schema.Types.Mixed,

@@ -1,5 +1,6 @@
 import Comment from '../models/comment.model';
 import Project from '../models/project.model';
+import notificationService from './notification.service';
 
 export const createComment = async (commentData: {
     content: string;
@@ -18,6 +19,31 @@ export const createComment = async (commentData: {
                 { $push: { replies: comment._id } },
                 { new: true }
             );
+
+            // Get the parent comment to find its creator
+            const parentComment = await Comment.findById(
+                commentData.parentComment
+            );
+
+            // Send notification to the parent comment creator
+            if (
+                parentComment &&
+                parentComment.user.toString() !== commentData.user
+            ) {
+                await notificationService.createNotification({
+                    recipientId: parentComment.user.toString(),
+                    senderId: commentData.user,
+                    type: 'COMMENT',
+                    message: 'Someone replied to your comment',
+                    entityId: commentData.project,
+                    entityType: 'Project',
+                    metadata: {
+                        commentId: commentData.parentComment,
+                        replyId: comment._id.toString(),
+                        projectId: commentData.project,
+                    },
+                });
+            }
         } else {
             // If it's a top-level comment, add it to the project’s comments
             await Project.findByIdAndUpdate(
@@ -122,7 +148,9 @@ export const updateComment = async (commentId: string, content: string) => {
             commentId,
             { content },
             { new: true }
-        ).populate('user', 'name email avatar');
+        ).populate<{
+            user: { _id: string; name: string; email: string; avatar: string };
+        }>('user', 'name email avatar');
 
         return comment;
     } catch (error) {
@@ -170,6 +198,26 @@ export const likeComment = async (commentId: string, userId: string) => {
             { new: true }
         ).populate('user', 'name email avatar');
 
+        // Send notification to comment creator (if it's not the same user)
+        if (
+            comment &&
+            comment.user &&
+            (comment.user as any)._id.toString() !== userId
+        ) {
+            await notificationService.createNotification({
+                recipientId: (comment.user as any)._id.toString(),
+                senderId: userId,
+                type: 'COMMENT',
+                message: 'Someone liked your comment',
+                entityId: comment.project.toString(),
+                entityType: 'Project',
+                metadata: {
+                    commentId: commentId,
+                    action: 'like',
+                },
+            });
+        }
+
         return comment;
     } catch (error) {
         throw error;
@@ -183,6 +231,25 @@ export const dislikeComment = async (commentId: string, userId: string) => {
             { $addToSet: { dislikes: userId }, $pull: { likes: userId } },
             { new: true }
         ).populate('user', 'name email avatar');
+
+        if (
+            comment &&
+            comment.user &&
+            (comment.user as any)._id.toString() !== userId
+        ) {
+            await notificationService.createNotification({
+                recipientId: (comment.user as any)._id.toString(),
+                senderId: userId,
+                type: 'COMMENT',
+                message: 'Someone disliked your comment',
+                entityId: comment.project.toString(),
+                entityType: 'Project',
+                metadata: {
+                    commentId: commentId,
+                    action: 'dislike',
+                },
+            });
+        }
 
         return comment;
     } catch (error) {

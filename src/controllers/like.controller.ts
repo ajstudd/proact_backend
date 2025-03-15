@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { CustomRequest } from '../types/CustomRequest';
 import {
     likeProject,
     dislikeProject,
@@ -10,8 +9,7 @@ import {
 export const likeProjectController = async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        console.log('req', req);
-        const userId = req.body.userId;
+        const userId = req.user?.id || req.body.userId;
 
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required' });
@@ -34,7 +32,7 @@ export const likeProjectController = async (req: Request, res: Response) => {
 export const dislikeProjectController = async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = req.body.userId;
+        const userId = req.user?.id || req.body.userId;
 
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required' });
@@ -57,7 +55,7 @@ export const dislikeProjectController = async (req: Request, res: Response) => {
 export const unlikeProjectController = async (req: Request, res: Response) => {
     try {
         const { projectId } = req.params;
-        const userId = req.body.userId;
+        const userId = req.user?.id || req.body.userId;
 
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required' });
@@ -83,7 +81,7 @@ export const undislikeProjectController = async (
 ) => {
     try {
         const { projectId } = req.params;
-        const userId = req.body.userId;
+        const userId = req.user?.id || req.body.userId;
 
         if (!userId) {
             return res.status(400).json({ message: 'User ID is required' });

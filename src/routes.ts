@@ -8,6 +8,7 @@ import corruptionReportRoutes from './routes/corruption-report.route';
 import fileRoute from './routes/fileUpload.route';
 import projectRoute from './routes/project.route';
 import feedbackRoute from './routes/feedback.route';
+import notificationRoute from './routes/notification.route';
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use('/file', fileRoute);
 router.use('/project', projectRoute);
 router.use('/corruption-reports', corruptionReportRoutes);
 router.use('/feedback', feedbackRoute);
+router.use('/notifications', notificationRoute);
 
 export default router;

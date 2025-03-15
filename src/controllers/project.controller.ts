@@ -200,6 +200,28 @@ export const removeProjectUpdateController = async (
 
         const project = await removeUpdateFromProject(projectId, updateId);
 
+        // Send notification to government if update is removed by contractor
+        if (
+            req.user &&
+            project.contractor.toString() === req.user.id.toString()
+        ) {
+            // Get government ID from the project
+            const governmentId = project.government.toString();
+
+            await notificationService.createNotification({
+                recipientId: governmentId,
+                senderId: req.user.id,
+                type: 'PROJECT_UPDATE',
+                message: `An update was removed from project: ${project.title}`,
+                entityId: projectId,
+                entityType: 'Project',
+                metadata: {
+                    projectTitle: project.title,
+                    action: 'update_removed',
+                },
+            });
+        }
+
         res.status(200).json({
             message: 'Update removed from project successfully!',
             project,
