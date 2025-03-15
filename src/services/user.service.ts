@@ -58,7 +58,15 @@ const getUserByEmailOrPhone = async (email?: string, phone?: string) => {
 
 const createUser = async (
     payload: Partial<
-        Pick<IUser, 'phone' | 'email' | 'name' | 'password' | 'role'>
+        Pick<
+            IUser,
+            | 'phone'
+            | 'email'
+            | 'name'
+            | 'password'
+            | 'role'
+            | 'contractorLicense'
+        >
     >
 ) => {
     if (!payload.email && !payload.phone) {

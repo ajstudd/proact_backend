@@ -15,8 +15,10 @@ import {
     filterProjects,
     fastSearch,
     getContractorsForGovernment,
+    updateProjectExpenditure,
 } from '@/services/project.service';
 import { uploadFile } from '../services/fileUpload.service';
+import notificationService from '@/services/notification.service';
 
 export const createProjectController = async (
     req: CustomRequest,
@@ -130,17 +132,52 @@ export const getAllTrimmedProjectsController = async (
 };
 
 export const addProjectUpdateController = async (
-    req: Request,
+    req: CustomRequest,
     res: Response
 ) => {
     try {
         const { projectId } = req.params;
-        const { content, media } = req.body;
+        const { content } = req.body;
+        const files = req.files as {
+            [fieldname: string]: Express.Multer.File[];
+        };
+
+        const mediaUrls: string[] = [];
+
+        // Upload media files if provided
+        if (files && files.media && files.media.length > 0) {
+            for (const file of files.media) {
+                const uploadResult = await uploadFile(file);
+                mediaUrls.push(uploadResult.url);
+            }
+        }
 
         const project = await addUpdateToProject(projectId, {
             content,
-            media,
+            media: mediaUrls,
         });
+
+        // Send notification to government if update is added by contractor
+        if (
+            req.user &&
+            project.contractor.toString() === req.user.id.toString()
+        ) {
+            // Get government ID from the project
+            const governmentId = project.government.toString();
+
+            await notificationService.createNotification({
+                recipientId: governmentId,
+                senderId: req.user.id,
+                type: 'PROJECT_UPDATE',
+                message: `New update added to project: ${project.title}`,
+                entityId: projectId,
+                entityType: 'Project',
+                metadata: {
+                    projectTitle: project.title,
+                    updateContent: content.substring(0, 100), // First 100 chars of update
+                },
+            });
+        }
 
         res.status(200).json({
             message: 'Update added to project successfully!',
@@ -176,17 +213,56 @@ export const removeProjectUpdateController = async (
 };
 
 export const editProjectUpdateController = async (
-    req: Request,
+    req: CustomRequest,
     res: Response
 ) => {
     try {
         const { projectId, updateId } = req.params;
-        const { content, media } = req.body;
+        const { content, keepExistingMedia } = req.body;
+        const files = req.files as {
+            [fieldname: string]: Express.Multer.File[];
+        };
 
-        const project = await editUpdateInProject(projectId, updateId, {
-            content,
-            media,
-        });
+        const updateData: { content?: string; media?: string[] } = {};
+
+        if (content !== undefined) {
+            updateData.content = content;
+        }
+
+        // First get the current project to access existing media if needed
+        let existingProject;
+        if (keepExistingMedia === 'true') {
+            existingProject = await getProjectById(projectId);
+            const existingUpdate = existingProject.updates.find(
+                (update: any) => update._id.toString() === updateId
+            );
+            if (existingUpdate) {
+                updateData.media = existingUpdate.media || [];
+            }
+        }
+
+        // Handle media uploads if files are provided
+        if (files && files.media && files.media.length > 0) {
+            const mediaUrls: string[] = [];
+
+            for (const file of files.media) {
+                const uploadResult = await uploadFile(file);
+                mediaUrls.push(uploadResult.url);
+            }
+
+            // If keeping existing media, combine arrays, otherwise replace
+            if (updateData.media && keepExistingMedia === 'true') {
+                updateData.media = [...updateData.media, ...mediaUrls];
+            } else {
+                updateData.media = mediaUrls;
+            }
+        }
+
+        const project = await editUpdateInProject(
+            projectId,
+            updateId,
+            updateData
+        );
 
         res.status(200).json({
             message: 'Update edited successfully!',
@@ -371,6 +447,59 @@ export const getContractorsForGovernmentController = async (
         });
     } catch (err: any) {
         console.log('Error in getContractorsForGovernmentController:', err);
+        res.status(500).json({
+            message: err.message || 'Internal Server Error!',
+        });
+    }
+};
+
+// New controller for updating project expenditure
+export const updateProjectExpenditureController = async (
+    req: CustomRequest,
+    res: Response
+) => {
+    try {
+        const { projectId } = req.params;
+        const { expenditure } = req.body;
+
+        if (expenditure === undefined || isNaN(Number(expenditure))) {
+            return res.status(400).json({
+                message: 'Valid expenditure amount is required',
+            });
+        }
+
+        const project = await updateProjectExpenditure(
+            projectId,
+            Number(expenditure)
+        );
+
+        // Send notification to government if expenditure is updated by contractor
+        if (
+            req.user &&
+            project.contractor.toString() === req.user.id.toString()
+        ) {
+            const governmentId = project.government.toString();
+
+            await notificationService.createNotification({
+                recipientId: governmentId,
+                senderId: req.user.id,
+                type: 'PROJECT_UPDATE',
+                message: `Expenditure updated for project: ${project.title}`,
+                entityId: projectId,
+                entityType: 'Project',
+                metadata: {
+                    projectTitle: project.title,
+                    expenditure: expenditure,
+                },
+            });
+        }
+
+        res.status(200).json({
+            message: 'Project expenditure updated successfully!',
+            project,
+        });
+    } catch (err: any) {
+        console.log('Error in updateProjectExpenditureController:', err);
         res.status(500).json({
             message: err.message || 'Internal Server Error!',
         });

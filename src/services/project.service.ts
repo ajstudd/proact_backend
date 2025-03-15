@@ -527,3 +527,24 @@ export const getContractorsForGovernment = async (governmentId: string) => {
         throw new Error('Fetching contractors failed!');
     }
 };
+
+export const updateProjectExpenditure = async (
+    projectId: string,
+    expenditure: number
+) => {
+    try {
+        const project = await Project.findByIdAndUpdate(
+            projectId,
+            { expenditure },
+            { new: true }
+        );
+
+        if (!project) {
+            throw new Error('Project not found!');
+        }
+        return project;
+    } catch (error) {
+        console.log('Error in updateProjectExpenditure service:', error);
+        throw new Error('Project expenditure update failed!');
+    }
+};

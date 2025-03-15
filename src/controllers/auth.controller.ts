@@ -40,6 +40,7 @@ const register = async (
         password,
         phone = undefined,
         role,
+        contractorLicense = undefined,
     } = req.body;
     await userService.createUser({
         email,
@@ -47,6 +48,8 @@ const register = async (
         name,
         password,
         role,
+        contractorLicense:
+            role === 'CONTRACTOR' ? contractorLicense : undefined,
     });
     return res.status(200).json({
         message: `Registration successful!`,

@@ -1,140 +1,63 @@
 import multer from 'multer';
-import { GridFsStorage } from 'multer-gridfs-storage';
-import crypto from 'crypto';
 import path from 'path';
-import dotenv from 'dotenv';
-import sharp from 'sharp';
-import { Readable } from 'stream';
+import { GridFSBucket } from 'mongodb';
 import mongoose from 'mongoose';
-import fs from 'fs';
+import { Request } from 'express';
+import { config } from '../configs/config';
 
-dotenv.config();
+// Configure multer storage
+const storage = multer.memoryStorage();
 
-// Define uploads directory path
-const uploadsDir = path.join(__dirname, '../../uploads');
+// Create the multer instance
+export const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB file size limit
+});
 
-// Ensure uploads directory exists
-const ensureUploadsDirectory = () => {
-    if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-        console.log(`Created uploads directory at ${uploadsDir}`);
-    }
+// Get or create a GridFS bucket
+const getBucket = (): GridFSBucket => {
+    return new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+        bucketName: 'uploads',
+    });
 };
 
-// Create uploads directory on module load
-ensureUploadsDirectory();
-
-// Create disk storage for temporary file uploads
-const diskStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        // Make sure directory exists before attempting to write
-        ensureUploadsDirectory();
-        cb(null, uploadsDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueName = `${Date.now()}-${crypto.randomBytes(10).toString('hex')}${path.extname(file.originalname)}`;
-        cb(null, uniqueName);
-    },
-});
-
-// Configure multer to use disk storage instead of memory storage
-const upload = multer({
-    storage: diskStorage,
-    fileFilter: (req, file, cb) => {
-        if (
-            file.mimetype.startsWith('image/') ||
-            file.mimetype === 'application/pdf'
-        ) {
-            cb(null, true);
-        } else {
-            cb(null, false);
-        }
-    },
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-});
-
-// Function to upload file to GridFS
-export const uploadFile = async (
-    file: Express.Multer.File
-): Promise<{ filename: string; url: string }> => {
+export const uploadFile = async (file: Express.Multer.File) => {
     try {
-        if (!file) {
-            throw new Error('No file provided');
-        }
+        // Create a unique filename using our custom function instead of uuid
+        const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${path.extname(file.originalname)}`;
 
-        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
-            bucketName: 'uploads',
-        });
+        // Get the GridFS bucket
+        const bucket = getBucket();
 
-        // Generate a unique filename
-        const filename = `${Date.now()}-${crypto.randomBytes(10).toString('hex')}${path.extname(file.originalname)}`;
-
-        // Verify file exists before creating read stream
-        if (!fs.existsSync(file.path)) {
-            throw new Error(`File does not exist at path: ${file.path}`);
-        }
-
-        // Create read stream from file on disk
-        const readStream = fs.createReadStream(file.path);
-
-        // Create write stream to GridFS
+        // Upload the file to GridFS
         const uploadStream = bucket.openUploadStream(filename, {
             contentType: file.mimetype,
-            metadata: { originalName: file.originalname },
         });
 
-        // Return promise that resolves when upload is complete
-        return new Promise((resolve, reject) => {
-            readStream
-                .pipe(uploadStream)
-                .on('finish', () => {
-                    // Clean up temporary file
-                    fs.unlink(file.path, (err: any) => {
-                        if (err)
-                            console.error('Error deleting temp file:', err);
-                    });
-                    resolve({
-                        filename,
-                        url: `http://localhost:5000/api/v1/project/file/${filename}`,
-                    });
-                })
-                .on('error', (err: any) => {
-                    reject(err);
+        // Write the file buffer to the stream
+        uploadStream.write(file.buffer);
+        uploadStream.end();
+
+        // Return a promise that resolves when the file is uploaded
+        return new Promise<{ filename: string; url: string }>(
+            (resolve, reject) => {
+                uploadStream.on('finish', () => {
+                    console.log(
+                        `File uploaded: ${filename} with ID ${uploadStream.id}`
+                    );
+                    // Return both the filename and a URL that can be used to retrieve the file
+                    const url = `${config.API_URL}/project/file/${filename}`;
+                    resolve({ filename, url });
                 });
-        });
-    } catch (err) {
-        console.error('File upload failed:', err);
-        throw new Error(
-            `File upload failed: ${err instanceof Error ? err.message : String(err)}`
+
+                uploadStream.on('error', (error) => {
+                    console.error('Error uploading file:', error);
+                    reject(error);
+                });
+            }
         );
+    } catch (error) {
+        console.error('Error in uploadFile:', error);
+        throw new Error('File upload failed');
     }
 };
-
-// Function to delete a file from GridFS by filename
-export const deleteFileFromGridFS = async (
-    filename: string
-): Promise<boolean> => {
-    try {
-        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
-            bucketName: 'uploads',
-        });
-
-        // Find the file by filename
-        const files = await bucket.find({ filename }).toArray();
-
-        if (files.length === 0) {
-            console.warn(`File with filename ${filename} not found in GridFS`);
-            return false;
-        }
-
-        // Delete the file
-        await bucket.delete(files[0]._id);
-        console.log(`Successfully deleted file: ${filename}`);
-        return true;
-    } catch (err) {
-        console.error('Error deleting file from GridFS:', err);
-        return false;
-    }
-};
-
-export { upload };

@@ -14,6 +14,17 @@ const register = Joi.object<RegisterUserPayload>({
     role: Joi.string()
         .valid('ADMIN', 'USER', 'CONTRACTOR', 'GOVERNMENT')
         .default('USER'),
+    contractorLicense: Joi.string().when('role', {
+        is: 'CONTRACTOR',
+        then: Joi.string().required().messages({
+            'any.required':
+                'Contractor license is required when role is CONTRACTOR',
+        }),
+        otherwise: Joi.forbidden().messages({
+            'any.unknown':
+                'Contractor license can only be provided when role is CONTRACTOR',
+        }),
+    }),
 });
 
 const update = Joi.object<UpdateUserPayload>({

@@ -83,7 +83,7 @@ export interface IRequestUser {
 
 export type RegisterUserPayload = Pick<
     IUser,
-    'email' | 'name' | 'phone' | 'password' | 'role'
+    'email' | 'name' | 'phone' | 'password' | 'role' | 'contractorLicense'
 >;
 
 export type UpdateUserPayload = Partial<Omit<IUser, 'id' | '_id' | 'photo'>> & {
