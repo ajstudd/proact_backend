@@ -25,6 +25,14 @@ router.patch(
     catchAsync(userController.editProfile)
 );
 
+// Reset password route
+router.post(
+    '/reset-password',
+    verifyToken({ strict: true }),
+    validate(userValidator.resetPassword),
+    catchAsync(userController.resetPassword)
+);
+
 router.post(
     '/verify-email',
     validate(userValidator.verifyEmailChange),

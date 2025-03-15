@@ -102,6 +102,14 @@ const UserSchema = new Schema<IUser>(
                 ref: 'Project',
             },
         ],
+        unreadNotificationsCount: {
+            type: Number,
+            default: 0,
+        },
+        totalNotificationsCount: {
+            type: Number,
+            default: 0,
+        },
     },
     {
         timestamps: true,

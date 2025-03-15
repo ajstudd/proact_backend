@@ -352,6 +352,37 @@ const getUserProfile = async (userId: string) => {
     return user;
 };
 
+const resetPassword = async (
+    userId: string,
+    oldPassword: string,
+    newPassword: string
+) => {
+    // Find user by ID and select password field which is normally excluded
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+        throw new HttpError({ message: 'User not found!', code: 404 });
+    }
+
+    // Verify old password
+    const isPasswordValid =
+        user.password && bcrypt.compareSync(oldPassword, user.password);
+    if (!isPasswordValid) {
+        throw new HttpError({
+            message: 'Old password is incorrect',
+            code: 400,
+        });
+    }
+
+    // Hash new password
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+    // Update password
+    user.password = hashedPassword;
+    await user.save();
+
+    return { success: true };
+};
+
 export default {
     updateUser,
     getUserById,
@@ -368,4 +399,5 @@ export default {
     editUserProfile,
     verifyEmailUpdate,
     getUserProfile,
+    resetPassword,
 };

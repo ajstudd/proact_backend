@@ -239,6 +239,26 @@ export const getProfile = async (req: Request, res: Response) => {
     }
 };
 
+export const resetPassword = async (req: Request, res: Response) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
+
+        const result = await userService.resetPassword(
+            req.user!.id,
+            oldPassword,
+            newPassword
+        );
+
+        return res.status(200).json({
+            message: 'Password reset successfully',
+            success: true,
+        });
+    } catch (error) {
+        const err = error as { code?: number; message: string };
+        return res.status(err.code || 500).json({ message: err.message });
+    }
+};
+
 export default {
     updateUser,
     getUserById,
@@ -255,4 +275,5 @@ export default {
     editProfile,
     verifyEmailChange,
     getProfile,
+    resetPassword,
 };

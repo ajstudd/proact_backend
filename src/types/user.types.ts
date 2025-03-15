@@ -33,6 +33,8 @@ export interface IUser extends Document {
     newEmailPending?: string;
     newPhonePending?: string;
     bookmarks?: Array<string | ObjectId>;
+    unreadNotificationsCount: number;
+    totalNotificationsCount: number;
     createdAt: Date;
     updatedAt: Date;
 }

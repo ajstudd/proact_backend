@@ -7,6 +7,7 @@ import otpRoute from './routes/otp.routes';
 import corruptionReportRoutes from './routes/corruption-report.route';
 import fileRoute from './routes/fileUpload.route';
 import projectRoute from './routes/project.route';
+import feedbackRoute from './routes/feedback.route';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/otp', otpRoute);
 router.use('/file', fileRoute);
 router.use('/project', projectRoute);
 router.use('/corruption-reports', corruptionReportRoutes);
+router.use('/feedback', feedbackRoute);
 
 export default router;

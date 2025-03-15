@@ -35,6 +35,7 @@ export interface AIAnalysisResult {
     tags: string[];
     containsInappropriateContent?: boolean;
     rejectionReason?: string;
+    needsMoreInformation?: boolean; // New field to indicate if more information is required
 }
 
 export const analyzeCorruptionReport = async (
@@ -60,14 +61,18 @@ export const analyzeCorruptionReport = async (
         You are a content moderation system. Analyze the following text and determine if it contains any:
         1. Abusive or offensive language in any language
         2. References to pornography or sexually explicit content
-        3. Illegal content or activities
-        4. Hate speech or discriminatory content
+        3. Hate speech or discriminatory content
+        
+        IMPORTANT: Be lenient with reports that contain accusations of corruption or misconduct. Even if the supporting details are minimal, the report should be processed. Only flag content that contains pornography, abusive language, or hate speech.
         
         Text to analyze: "${description}"
         
         Respond only with a JSON object in this format:
         {
           "containsInappropriateContent": boolean,
+          "isRandomContent": boolean,
+          "hasAccusation": boolean,
+          "hasSupportingDetails": boolean,
           "rejectionReason": "string explaining what was found if inappropriate, otherwise empty"
         }
         `;
@@ -94,6 +99,28 @@ export const analyzeCorruptionReport = async (
                         'Contains inappropriate content',
                 };
             }
+
+            // Only consider content random if it has no accusation at all
+            if (
+                moderationResponse.isRandomContent &&
+                !moderationResponse.hasAccusation
+            ) {
+                return {
+                    severity: 0,
+                    summary:
+                        'Report contains random content with no corruption claim.',
+                    isValidReport: false,
+                    tags: ['irrelevant_content'],
+                    rejectionReason:
+                        moderationResponse.rejectionReason ||
+                        'Contains random content with no actual corruption claim',
+                };
+            }
+
+            // Accept all accusations unconditionally - don't ask for more details
+            if (moderationResponse.hasAccusation) {
+                // Continue processing the accusation without additional checks or warnings
+            }
         } catch (error) {
             console.error(
                 'Failed to parse moderation response:',
@@ -106,7 +133,8 @@ export const analyzeCorruptionReport = async (
         1. A severity score from 1-10 (where 10 is most severe)
         2. A brief summary of the allegation (max 100 words)
         3. Whether this appears to be a valid corruption report (true/false)
-        4. Key tags related to the type of corruption (comma separated)
+        4. Whether the report contains enough detail to be actionable (true/false)
+        5. Key tags related to the type of corruption (comma separated)
         
         The report ${hasAttachment ? 'includes supporting documents or images' : 'does not include supporting evidence'}.
         
@@ -117,6 +145,8 @@ export const analyzeCorruptionReport = async (
           "severity": number,
           "summary": "string",
           "isValidReport": boolean,
+          "hasEnoughInformation": boolean,
+          "needsMoreInformation": boolean,
           "tags": ["tag1", "tag2"]
         }
         
@@ -131,10 +161,7 @@ export const analyzeCorruptionReport = async (
             // Clean the AI analysis response before parsing
             const cleanTextResult = cleanJsonResponse(textResult);
             console.log('Cleaned AI analysis response:', cleanTextResult);
-            // Cleaned moderation response: {
-            //     "containsInappropriateContent": true,
-            //     "rejectionReason": "The text contains abusive and offensive language.  The phrase translates roughly to 'son of a whore, damn project' and is highly insulting."
-            //   }
+
             const jsonResponse = JSON.parse(cleanTextResult);
             return {
                 severity: Math.min(10, Math.max(1, jsonResponse.severity || 5)), // Ensure score is between 1-10
@@ -144,6 +171,8 @@ export const analyzeCorruptionReport = async (
                     jsonResponse.containsInappropriateContent !== true,
                 tags: Array.isArray(jsonResponse.tags) ? jsonResponse.tags : [],
                 rejectionReason: jsonResponse?.rejectionReason,
+                needsMoreInformation:
+                    jsonResponse.needsMoreInformation === true,
             };
         } catch (error) {
             console.error('Failed to parse AI response:', textResult);
