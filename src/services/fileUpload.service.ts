@@ -3,8 +3,8 @@ import path from 'path';
 import { GridFSBucket } from 'mongodb';
 import mongoose from 'mongoose';
 import { Request } from 'express';
-import { config } from '../configs/config';
 
+const API_URL = process.env.API_URL || 'http://localhost:5000/api/v1';
 // Configure multer storage
 const storage = multer.memoryStorage();
 
@@ -46,7 +46,7 @@ export const uploadFile = async (file: Express.Multer.File) => {
                         `File uploaded: ${filename} with ID ${uploadStream.id}`
                     );
                     // Return both the filename and a URL that can be used to retrieve the file
-                    const url = `${config.API_URL}/project/file/${filename}`;
+                    const url = `${API_URL}/project/file/${filename}`;
                     resolve({ filename, url });
                 });
 
