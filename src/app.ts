@@ -24,6 +24,10 @@ app.use(express.static('public'));
 
 app.use('/api/v1', routes);
 
+app.get('/', (req, res) => {
+    res.send('Hello Proactive India');
+});
+
 app.use((err: HttpError, req: Request, res: Response, next: NextFunction) => {
     console.error(err);
     return res

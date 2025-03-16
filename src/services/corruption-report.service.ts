@@ -15,6 +15,7 @@ interface CreateReportParams {
     attachmentUrl?: string;
     attachmentType?: 'image' | 'pdf' | 'none';
     userId?: string;
+    isAnonymous?: boolean;
     file?: Express.Multer.File;
 }
 
@@ -24,6 +25,7 @@ export const createCorruptionReport = async ({
     attachmentUrl = '',
     attachmentType = 'none',
     userId,
+    isAnonymous = !userId,
     file,
 }: CreateReportParams) => {
     try {
@@ -75,8 +77,8 @@ export const createCorruptionReport = async ({
             fileUrl: attachmentUrl,
             fileType: attachmentType,
             reportedBy: {
-                userId: userId || null,
-                isAnonymous: !userId,
+                userId: isAnonymous ? null : userId,
+                isAnonymous: isAnonymous,
             },
             aiAnalysis,
             // Set initial status based on AI analysis as done in report.service
@@ -227,13 +229,17 @@ export const updateReportStatus = async (
         );
 
         // Send notification to the user who reported if not anonymous
-        if (report.reportedBy && report.reportedBy.userId && !report.reportedBy.isAnonymous) {
+        if (
+            report.reportedBy &&
+            report.reportedBy.userId &&
+            !report.reportedBy.isAnonymous
+        ) {
             const projectTitle = project.title || 'a project';
             const statusMap: Record<string, string> = {
                 investigating: 'is now being investigated',
                 resolved: 'has been resolved',
                 rejected: 'has been rejected',
-                pending: 'is pending review'
+                pending: 'is pending review',
             };
 
             const messageText = `Your report for ${projectTitle} ${statusMap[status]}`;
@@ -249,7 +255,7 @@ export const updateReportStatus = async (
                     projectId: project._id,
                     projectTitle: projectTitle,
                     reportStatus: status,
-                    rejectionReason: rejectionReason
+                    rejectionReason: rejectionReason,
                 },
             });
         }

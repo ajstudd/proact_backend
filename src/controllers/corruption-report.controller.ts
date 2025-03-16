@@ -6,7 +6,7 @@ import { CustomRequest } from '@/types/CustomRequest';
 
 export const createReport = async (req: CustomRequest, res: Response) => {
     try {
-        const { projectId, description } = req.body;
+        const { projectId, description, userId, isAnonymous } = req.body;
 
         if (!projectId || !description) {
             throw new HttpError({
@@ -15,7 +15,9 @@ export const createReport = async (req: CustomRequest, res: Response) => {
             });
         }
 
-        const userId = req.user?.id;
+        // Convert isAnonymous string to boolean if needed
+        const reportAnonymously =
+            isAnonymous === 'true' || isAnonymous === true;
 
         const files = req.files as
             | {
@@ -26,7 +28,8 @@ export const createReport = async (req: CustomRequest, res: Response) => {
         const report = await corruptionReportService.createCorruptionReport({
             projectId,
             description,
-            userId,
+            userId: reportAnonymously ? undefined : userId,
+            isAnonymous: reportAnonymously,
             file:
                 files && files.attachment && files.attachment.length > 0
                     ? files.attachment[0]
