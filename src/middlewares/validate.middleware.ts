@@ -1,16 +1,18 @@
+import { Schema } from 'joi';
 import { Request, Response, NextFunction } from 'express';
-import Joi from 'joi';
 
-/**
- * Middleware for validating request data against Joi schemas
- * @param schema - Joi schema to validate against
- * @returns Express middleware function
- */
-const validate = (schema: Joi.ObjectSchema | Joi.AlternativesSchema) => {
+const validate = (schema: Schema) => {
     return (req: Request, res: Response, next: NextFunction) => {
-        const { error, value } = schema.validate(req.body, {
+        let dataToValidate;
+
+        if (req.method === 'GET') {
+            dataToValidate = req.query;
+        } else {
+            dataToValidate = req.body;
+        }
+
+        const { error, value } = schema.validate(dataToValidate, {
             abortEarly: false,
-            stripUnknown: true,
         });
 
         if (error) {
@@ -24,9 +26,15 @@ const validate = (schema: Joi.ObjectSchema | Joi.AlternativesSchema) => {
             });
         }
 
-        // Replace request body with validated value
-        req.body = value;
-        next();
+        // For GET requests, replace validated data back to req.query
+        // For other methods, replace validated data back to req.body
+        if (req.method === 'GET') {
+            req.query = value;
+        } else {
+            req.body = value;
+        }
+
+        return next();
     };
 };
 

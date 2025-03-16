@@ -14,11 +14,12 @@ export interface IUser extends Document {
     _id: ObjectId;
     id: string;
     name: string;
+    username?: string;
     phone: string;
     email: string;
     role: RoleCode;
     password?: string;
-    photo?: string; // Changed from PopulatedDoc<IImage> to string
+    photo?: string;
     isVerified: boolean;
     lastLogin?: Date;
     resetPasswordToken?: string;

@@ -391,6 +391,101 @@ const resetPassword = async (
     return { success: true };
 };
 
+/**
+ * Search users by query string (matches email, name, phone, or ID)
+ */
+const searchUsers = async (
+    query: string,
+    options: {
+        limit?: number;
+        skip?: number;
+        role?: string;
+    } = {}
+) => {
+    try {
+        if (!query || query.trim().length < 1) {
+            return { users: [], total: 0 };
+        }
+
+        const { limit = 10, skip = 0, role } = options;
+
+        // Build the search filter
+        const searchFilter: FilterQuery<IUser> = {};
+        const trimmedQuery = query.trim();
+
+        // Search for exact ID match if query looks like MongoDB ObjectId
+        if (mongoose.Types.ObjectId.isValid(trimmedQuery)) {
+            searchFilter._id = trimmedQuery;
+        } else {
+            // Otherwise search across multiple fields
+            searchFilter.$or = [
+                { email: { $regex: trimmedQuery, $options: 'i' } },
+                { name: { $regex: trimmedQuery, $options: 'i' } },
+                { username: { $regex: trimmedQuery, $options: 'i' } },
+            ];
+
+            // If phone number, also search by phone
+            // Only add phone search if query contains number-like characters
+            if (/\d/.test(trimmedQuery)) {
+                searchFilter.$or.push({
+                    phone: { $regex: trimmedQuery, $options: 'i' },
+                });
+            }
+        }
+
+        // Add role filter if specified
+        if (role) {
+            searchFilter.role = role;
+        }
+
+        // Execute search query and count in parallel
+        const [users, total] = await Promise.all([
+            User.find(searchFilter, {
+                name: 1,
+                username: 1,
+                email: 1,
+                phone: 1,
+                role: 1,
+                photo: 1,
+                isVerified: 1,
+                createdAt: 1,
+            })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            User.countDocuments(searchFilter),
+        ]);
+
+        return {
+            users,
+            total,
+            limit,
+            skip,
+            hasMore: total > skip + users.length,
+        };
+    } catch (error) {
+        console.error('Error in searchUsers service:', error);
+        throw new HttpError({ message: 'User search failed', code: 500 });
+    }
+};
+
+/**
+ * Search specifically for contractors
+ */
+const searchContractors = async (
+    query: string,
+    options: {
+        limit?: number;
+        skip?: number;
+    } = {}
+) => {
+    return searchUsers(query, {
+        ...options,
+        role: 'CONTRACTOR',
+    });
+};
+
 export default {
     updateUser,
     getUserById,
@@ -408,4 +503,6 @@ export default {
     verifyEmailUpdate,
     getUserProfile,
     resetPassword,
+    searchUsers,
+    searchContractors,
 };

@@ -39,6 +39,20 @@ router.post(
     catchAsync(userController.verifyEmailChange)
 );
 
+router.get(
+    '/search',
+    verifyToken({ strict: false }),
+    validate(userValidator.searchQuery),
+    catchAsync(userController.searchUsers)
+);
+
+router.get(
+    '/search/contractors',
+    verifyToken({ strict: false }),
+    validate(userValidator.searchQuery),
+    catchAsync(userController.searchContractors)
+);
+
 router.use('/comments', commentRoutes);
 router.get(
     '/profile',

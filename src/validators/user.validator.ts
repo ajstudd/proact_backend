@@ -85,6 +85,12 @@ const resetPassword = Joi.object({
     newPassword: Joi.string().min(6).required(),
 });
 
+const searchQuery = Joi.object({
+    query: Joi.string().min(1).required(),
+    limit: Joi.number().integer().min(1).max(100).optional(),
+    page: Joi.number().integer().min(1).optional(),
+}).unknown(true); // Allow unknown query parameters
+
 export default {
     register,
     login,
@@ -93,7 +99,5 @@ export default {
     editProfile,
     verifyEmailChange,
     resetPassword,
-    // refreshToken,
-    // forgotPassword,
-    // resetPassword,
+    searchQuery,
 };

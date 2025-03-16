@@ -259,6 +259,69 @@ export const resetPassword = async (req: Request, res: Response) => {
     }
 };
 
+export const searchUsers = async (req: Request, res: Response) => {
+    try {
+        const { query, limit, page } = req.query;
+
+        if (!query) {
+            return res.status(400).json({
+                message: 'Search query is required',
+            });
+        }
+
+        const options = {
+            limit: limit ? parseInt(limit as string, 10) : 10,
+            skip: page
+                ? (parseInt(page as string, 10) - 1) *
+                  (limit ? parseInt(limit as string, 10) : 10)
+                : 0,
+        };
+
+        const result = await userService.searchUsers(query as string, options);
+
+        return res.status(200).json({
+            message: 'Users found successfully',
+            ...result,
+        });
+    } catch (error) {
+        const err = error as { code?: number; message: string };
+        return res.status(err.code || 500).json({ message: err.message });
+    }
+};
+
+export const searchContractors = async (req: Request, res: Response) => {
+    try {
+        const { query, limit, page } = req.query;
+
+        if (!query) {
+            return res.status(400).json({
+                message: 'Search query is required',
+            });
+        }
+
+        const options = {
+            limit: limit ? parseInt(limit as string, 10) : 10,
+            skip: page
+                ? (parseInt(page as string, 10) - 1) *
+                  (limit ? parseInt(limit as string, 10) : 10)
+                : 0,
+        };
+
+        const result = await userService.searchContractors(
+            query as string,
+            options
+        );
+
+        return res.status(200).json({
+            message: 'Contractors found successfully',
+            ...result,
+        });
+    } catch (error) {
+        const err = error as { code?: number; message: string };
+        return res.status(err.code || 500).json({ message: err.message });
+    }
+};
+
 export default {
     updateUser,
     getUserById,
@@ -276,4 +339,6 @@ export default {
     verifyEmailChange,
     getProfile,
     resetPassword,
+    searchUsers,
+    searchContractors,
 };

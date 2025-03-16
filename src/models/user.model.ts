@@ -8,6 +8,12 @@ const UserSchema = new Schema<IUser>(
             required: true,
             trim: true,
         },
+        username: {
+            type: String,
+            trim: true,
+            unique: true,
+            sparse: true,
+        },
         email: {
             type: String,
             required() {
@@ -117,5 +123,9 @@ const UserSchema = new Schema<IUser>(
         toObject: { virtuals: true, getters: true },
     }
 );
+
+UserSchema.index({ email: 1 });
+UserSchema.index({ phone: 1 });
+UserSchema.index({ name: 'text', username: 'text' });
 
 export default model<IUser>('User', UserSchema, 'users');
