@@ -10,7 +10,7 @@ export const createComment = async (commentData: {
 }) => {
     try {
         // Create the comment
-        const comment = await Comment.create(commentData);
+        const comment: any = await Comment.create(commentData);
 
         // If it's a reply to another comment, add it to the parent comment’s replies
         if (commentData.parentComment) {

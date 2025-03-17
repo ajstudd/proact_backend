@@ -45,6 +45,9 @@ router.get('/contractors', authMiddleware([UserRole.GOVERNMENT]), (req, res) =>
 );
 
 router.get('/file/:filename', async (req, res) => {
+    if (!mongoose.connection.db) {
+        return res.status(500).json({ message: 'Database not initialized' });
+    }
     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
         bucketName: 'uploads',
     });

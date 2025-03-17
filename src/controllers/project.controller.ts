@@ -42,12 +42,11 @@ export const createProjectController = async (
             pdfUrl = pdfResult.url;
         }
 
-        // Use the authenticated user's ID as the government ID
         const projectData = {
             ...req.body,
             bannerUrl,
             pdfUrl,
-            government: req.user ? req.user.id : null, // Get the user ID from the auth middleware
+            government: req.user ? req.user.id : null,
         };
 
         const project = await createProject(projectData);
@@ -144,7 +143,6 @@ export const addProjectUpdateController = async (
 
         const mediaUrls: string[] = [];
 
-        // Upload media files if provided
         if (files && files.media && files.media.length > 0) {
             for (const file of files.media) {
                 const uploadResult = await uploadFile(file);
@@ -157,12 +155,10 @@ export const addProjectUpdateController = async (
             media: mediaUrls,
         });
 
-        // Send notification to government if update is added by contractor
         if (
             req.user &&
             project.contractor.toString() === req.user.id.toString()
         ) {
-            // Get government ID from the project
             const governmentId = project.government.toString();
 
             await notificationService.createNotification({
@@ -200,12 +196,10 @@ export const removeProjectUpdateController = async (
 
         const project = await removeUpdateFromProject(projectId, updateId);
 
-        // Send notification to government if update is removed by contractor
         if (
             req.user &&
             project.contractor.toString() === req.user.id.toString()
         ) {
-            // Get government ID from the project
             const governmentId = project.government.toString();
 
             await notificationService.createNotification({

@@ -15,7 +15,6 @@ export const createReport = async (req: CustomRequest, res: Response) => {
             });
         }
 
-        // Convert isAnonymous string to boolean if needed
         const reportAnonymously =
             isAnonymous === 'true' || isAnonymous === true;
 

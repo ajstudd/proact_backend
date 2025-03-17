@@ -17,8 +17,8 @@ const generateAuthToken = (
 
     const token = jwt.sign(
         authTokenPayload,
-        process.env.JWT_TOKEN_SECRET as Secret,
-        {
+        process.env.JWT_TOKEN_SECRET as string,
+        <jwt.SignOptions>{
             expiresIn: process.env.JWT_TOKEN_EXPIRES_IN || '7d',
         }
     );

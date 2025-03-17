@@ -14,8 +14,15 @@ export const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB file size limit
 });
 
+// let gridBucket: GridFSBucket;
+
+// export const connectGridFS = async () => {
+//     const connection = mongoose.connection;
 // Get or create a GridFS bucket
 const getBucket = (): GridFSBucket => {
+    if (!mongoose.connection.db) {
+        throw new Error('Database connection is not established');
+    }
     return new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
         bucketName: 'uploads',
     });

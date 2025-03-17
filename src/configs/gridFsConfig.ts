@@ -1,16 +1,19 @@
-import mongoose from "mongoose";
-import { GridFSBucket } from "mongodb";
+import mongoose from 'mongoose';
+import { GridFSBucket } from 'mongodb';
 
 let gridBucket: GridFSBucket;
 
 export const connectGridFS = async () => {
-  const connection = mongoose.connection;
+    const connection = mongoose.connection;
 
-  gridBucket = new mongoose.mongo.GridFSBucket(connection.db, {
-    bucketName: "uploads", // This will create two collections: uploads.files and uploads.chunks
-  });
+    if (!connection.db) {
+        throw new Error('Database connection is not established');
+    }
+    gridBucket = new GridFSBucket(connection.db, {
+        bucketName: 'uploads',
+    });
 
-  console.log("✅ GridFS Connected");
+    console.log('✅ GridFS Connected');
 };
 
 export { gridBucket };

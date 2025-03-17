@@ -17,6 +17,11 @@ export const getFile = async (req: Request, res: Response) => {
     try {
         const { filename } = req.params;
 
+        if (!conn.db) {
+            return res
+                .status(500)
+                .json({ message: 'Database connection not established' });
+        }
         const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
             bucketName: 'uploads',
         });
@@ -37,12 +42,15 @@ export const getFile = async (req: Request, res: Response) => {
 export const deleteFile = async (req: Request, res: Response) => {
     try {
         const { filename } = req.params;
-
+        if (!conn.db) {
+            return res
+                .status(500)
+                .json({ message: 'Database connection not established' });
+        }
         const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
             bucketName: 'uploads',
         });
 
-        // Find File in Bucket
         const files = await conn.db
             .collection('uploads.files')
             .findOne({ filename: filename });
@@ -51,7 +59,6 @@ export const deleteFile = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'File not found!' });
         }
 
-        // Delete File
         await bucket.delete(files._id);
         return res.status(200).json({ message: 'File deleted successfully!' });
     } catch (err) {
@@ -61,6 +68,11 @@ export const deleteFile = async (req: Request, res: Response) => {
 
 export const listFiles = async (req: Request, res: Response) => {
     try {
+        if (!conn.db) {
+            return res
+                .status(500)
+                .json({ message: 'Database connection not established' });
+        }
         const bucket = new mongoose.mongo.GridFSBucket(conn.db, {
             bucketName: 'uploads',
         });
