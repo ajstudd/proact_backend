@@ -8,13 +8,13 @@ on:
 jobs:
     deploy:
         runs-on: ubuntu-latest
-        environment: oracle
+        environment: oracle # Use correct environment name
 
         steps:
             - name: Checkout code
               uses: actions/checkout@v3
 
-            - name: Debug Secrets (Ensure Values Are Loaded)
+            - name: Debug Secrets
               run: |
                   echo "Using SSH_HOST=${{ secrets.SSH_HOST }}"
                   echo "Using SSH_PORT=${{ secrets.SSH_PORT }}"
@@ -29,5 +29,20 @@ jobs:
                   port: ${{ secrets.SSH_PORT }}
                   script: |
                       cd ${{ secrets.PROJECT_PATH }}
-                      git pull
+
+                      # Ensure PM2 is installed
+                      if ! command -v pm2 &> /dev/null; then
+                          echo "PM2 not found. Installing..."
+                          npm install -g pm2
+                      fi
+
+                      # Load PM2
+                      source ~/.bashrc
+
+                      # Handle untracked files before git pull
+                      git reset --hard  # Resets local changes
+                      git clean -fd     # Removes untracked files
+                      git pull origin main  # Pull latest changes
+
+                      # Restart application
                       pm2 reload ecosystem.config.js
