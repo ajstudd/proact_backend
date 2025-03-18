@@ -12,6 +12,11 @@ jobs:
         steps:
             - name: Checkout code
               uses: actions/checkout@v3
+            - name: Debug Secrets
+              run: |
+                  echo "SSH_HOST=${{ secrets.SSH_HOST }}"
+                  echo "SSH_USERNAME=${{ secrets.SSH_USERNAME }}"
+                  echo "SSH_PORT=${{ secrets.SSH_PORT }}"
 
             - name: Deploy to server
               uses: appleboy/ssh-action@master
