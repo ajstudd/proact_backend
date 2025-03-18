@@ -1,3 +1,4 @@
+import 'module-alias/register';
 import app from './app';
 import mongoose from 'mongoose';
 import mailer from './services/mail.service';
