@@ -8,15 +8,17 @@ on:
 jobs:
     deploy:
         runs-on: ubuntu-latest
+        environment: oracle
 
         steps:
             - name: Checkout code
               uses: actions/checkout@v3
-            - name: Debug Secrets
+
+            - name: Debug Secrets (Ensure Values Are Loaded)
               run: |
-                  echo "SSH_HOST=${{ secrets.SSH_HOST }}"
-                  echo "SSH_USERNAME=${{ secrets.SSH_USERNAME }}"
-                  echo "SSH_PORT=${{ secrets.SSH_PORT }}"
+                  echo "Using SSH_HOST=${{ secrets.SSH_HOST }}"
+                  echo "Using SSH_PORT=${{ secrets.SSH_PORT }}"
+                  echo "Using SSH_USERNAME=${{ secrets.SSH_USERNAME }}"
 
             - name: Deploy to server
               uses: appleboy/ssh-action@master
