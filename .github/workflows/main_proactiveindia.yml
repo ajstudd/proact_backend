@@ -32,10 +32,17 @@ jobs:
 
                       # Ensure Node.js and npm are installed
                       if ! command -v npm &> /dev/null; then
-                          echo "npm not found. Installing Node.js..."
-                          curl -fsSL https://deb.nodesource.com/setup_18.x | bash -  # Use Node 18 (or adjust version)
-                          apt-get install -y nodejs
+                          echo "npm not found."
                       fi
+
+                      # Load NVM
+                      export PATH="$HOME/.local/bin:$PATH"
+                      export NVM_DIR="$HOME/.nvm"
+                      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                      [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+                      # Use the default Node.js version from NVM
+                      nvm use default
 
                       # Verify npm installation
                       npm -v
