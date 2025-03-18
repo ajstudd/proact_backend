@@ -30,19 +30,33 @@ jobs:
                   script: |
                       cd ${{ secrets.PROJECT_PATH }}
 
+                      # Ensure Node.js and npm are installed
+                      if ! command -v npm &> /dev/null; then
+                          echo "npm not found. Installing Node.js..."
+                          curl -fsSL https://deb.nodesource.com/setup_18.x | bash -  # Use Node 18 (or adjust version)
+                          apt-get install -y nodejs
+                      fi
+
+                      # Verify npm installation
+                      npm -v
+                      node -v
+
                       # Ensure PM2 is installed
                       if ! command -v pm2 &> /dev/null; then
                           echo "PM2 not found. Installing..."
                           npm install -g pm2
                       fi
 
-                      # Load PM2
+                      # Load PM2 and environment settings
                       source ~/.bashrc
 
                       # Handle untracked files before git pull
-                      git reset --hard  # Resets local changes
+                      git reset --hard  # Resets local modifications
                       git clean -fd     # Removes untracked files
                       git pull origin main  # Pull latest changes
+
+                      # Install dependencies
+                      npm install
 
                       # Restart application
                       pm2 reload ecosystem.config.js
