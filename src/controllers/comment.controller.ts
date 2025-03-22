@@ -19,6 +19,13 @@ export const createCommentController = async (req: Request, res: Response) => {
                 message: 'Content, project ID and user ID are required',
             });
         }
+        const clientUserId = req.user?.id;
+
+        if (clientUserId !== userId) {
+            return res.status(403).json({
+                message: 'You are not authorized to perform this action',
+            });
+        }
 
         const commentData = {
             content,

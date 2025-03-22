@@ -7,7 +7,12 @@ import {
 } from '../types';
 
 const register = Joi.object<RegisterUserPayload>({
-    phone: Joi.string().phoneNumber({ format: 'e164' }).optional(),
+    phone: Joi.string()
+        .pattern(/^[0-9]{10}$/)
+        .optional()
+        .messages({
+            'string.pattern.base': 'Phone number must be a 10 digit number',
+        }),
     email: Joi.string().email().optional(),
     name: Joi.string().required(),
     password: Joi.string().required(),

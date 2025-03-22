@@ -9,7 +9,7 @@ export const isCommentOwnerMiddleware = async (
 ) => {
     try {
         const { commentId } = req.params;
-        const userId = (req as CustomRequest).user?._id;
+        const userId = req.user?.id;
 
         if (!userId) {
             return res

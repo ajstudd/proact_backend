@@ -36,6 +36,9 @@ const commentSchema = new Schema<IComment>(
     { timestamps: true }
 );
 
-const Comment = mongoose.model<IComment>('Comment', commentSchema);
+// Check if the model exists before creating it to prevent OverwriteModelError
+const Comment =
+    mongoose.models.Comment ||
+    mongoose.model<IComment>('Comment', commentSchema);
 
 export default Comment;
