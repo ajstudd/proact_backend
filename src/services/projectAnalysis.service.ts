@@ -439,6 +439,7 @@ export const generateAggregateAnalysis = async (governmentId: string) => {
                     topPositiveTags: positiveTags,
                     topNegativeTags: negativeTags,
                     topConcerns: extractTopConcerns(allComments),
+                    topPraises: extractTopPraises(allComments), // <-- Add this line
                 },
                 corruptionReports: {
                     totalReports,
@@ -661,41 +662,19 @@ const analyzeCommentBatch = async (comments: string[]) => {
     return { positive, neutral, negative };
 };
 
-const extractCommentTags = async (comments: any[]) => {
-    try {
-        // Extract content from all comments
-        const commentTexts = comments.map((c) => c.content).join(' ');
-
-        // If no comments, return empty array
-        if (!commentTexts) {
-            return [];
-        }
-
-        // Use AI to extract tags and their sentiment
-        // This is a simplified version - would typically call the AI service
-        const tags = await extractTagsWithAI(commentTexts);
-        return tags;
-    } catch (error) {
-        console.error('Error extracting comment tags:', error);
-        return [];
-    }
-};
-
-const extractTagsWithAI = async (text: string) => {
-    if (!model) {
-        // fallback: return empty array if no API key
-        return [];
-    }
+/**
+ * Extract tags and sentiment from a single comment using AI
+ */
+const extractTagsFromComment = async (comment: string) => {
+    if (!model) return [];
     const prompt = `
-    Analyze the following text (comments from a public project) and extract the most relevant tags (keywords or topics) discussed. 
-    For each tag, estimate how many times it appears (count) and classify its overall sentiment as "positive", "neutral", or "negative".
+    Extract up to 3 relevant tags (keywords or topics) from the following comment and classify each as "positive", "neutral", or "negative" based on the sentiment in context.
     Respond with a JSON array of objects in this format:
     [
-      { "tag": "string", "count": number, "sentiment": "positive|neutral|negative" },
-      ...
+      { "tag": "string", "sentiment": "positive|neutral|negative" }
     ]
     Only respond with the JSON array, no extra text.
-    Text: """${text}"""
+    Comment: """${comment}"""
     `;
     try {
         const result = await model.generateContent(prompt);
@@ -708,13 +687,63 @@ const extractTagsWithAI = async (text: string) => {
         if (Array.isArray(tags)) return tags;
         return [];
     } catch (error) {
-        console.error('Error extracting tags with AI:', error);
+        // fallback: no tags
         return [];
     }
 };
 
 /**
- * Extract top concerns from comments using AI
+ * Improved: Extract tags and aggregate counts/sentiment from all comments
+ */
+const extractCommentTags = async (comments: any[]) => {
+    try {
+        if (!comments.length) return [];
+        // Extract tags from each comment individually
+        const tagResults = await Promise.all(
+            comments.map(async (c) => {
+                const tags = await extractTagsFromComment(c.content);
+                return tags;
+            })
+        );
+        // Aggregate tags and sentiment
+        const tagMap: {
+            [key: string]: {
+                count: number;
+                sentimentCounts: { [s: string]: number };
+            };
+        } = {};
+        tagResults.flat().forEach((tagObj) => {
+            if (!tagObj || !tagObj.tag || !tagObj.sentiment) return;
+            const tag = tagObj.tag.trim().toLowerCase();
+            const sentiment = tagObj.sentiment;
+            if (!tagMap[tag]) {
+                tagMap[tag] = {
+                    count: 0,
+                    sentimentCounts: { positive: 0, neutral: 0, negative: 0 },
+                };
+            }
+            tagMap[tag].count += 1;
+            if (sentiment in tagMap[tag].sentimentCounts) {
+                tagMap[tag].sentimentCounts[sentiment]++;
+            }
+        });
+        // For each tag, assign the sentiment with the highest count
+        const result = Object.entries(tagMap).map(([tag, data]) => {
+            const sentiment = Object.entries(data.sentimentCounts).sort(
+                (a, b) => b[1] - a[1]
+            )[0][0];
+            return { tag, count: data.count, sentiment };
+        });
+        // Sort by count descending
+        return result.sort((a, b) => b.count - a.count);
+    } catch (error) {
+        console.error('Error extracting comment tags:', error);
+        return [];
+    }
+};
+
+/**
+ * Extract top concerns from comments using AI (improved: aggregate per comment)
  */
 const extractTopConcerns = (comments: any[]) => {
     if (!model) {
@@ -726,39 +755,46 @@ const extractTopConcerns = (comments: any[]) => {
             'Environmental impact',
         ];
     }
-    const text = comments.map((c) => c.content).join(' ');
-    if (!text) return [];
-    // Synchronous wrapper for async function
+    const texts = comments.map((c) => c.content).filter(Boolean);
+    if (!texts.length) return [];
+    // Use AI to extract concerns from each comment, then aggregate
     let result: string[] = [];
-    const prompt = `
-    From the following comments, extract the top 3-5 concerns or complaints expressed by users. 
-    Respond with a JSON array of short phrases, no extra text.
-    Comments: """${text}"""
-    `;
-    // Use a synchronous hack to call async in a sync context
-    // (since the parent function is not async, but we want to keep the signature)
-    // In real code, you should refactor to make this async, but for now:
     let done = false;
-    model
-        .generateContent(prompt)
-        .then((aiResult) => {
-            try {
+    (async () => {
+        try {
+            const allConcerns: string[] = [];
+            for (const text of texts) {
+                const prompt = `
+                From the following comment, extract the main concern or complaint (if any) as a short phrase. If none, return an empty array.
+                Respond with a JSON array of short phrases, no extra text.
+                Comment: """${text}"""
+                `;
+                const aiResult = await model.generateContent(prompt);
                 const response = aiResult.response
                     .text()
                     .replace(/```(json)?/g, '')
                     .replace(/```/g, '')
                     .trim();
                 const arr = JSON.parse(response);
-                if (Array.isArray(arr)) result = arr;
-            } catch (e) {
-                // ignore
+                if (Array.isArray(arr)) allConcerns.push(...arr);
             }
-            done = true;
-        })
-        .catch(() => {
-            done = true;
-        });
-    // Wait up to 2 seconds for AI response (not ideal, but avoids breaking signature)
+            // Aggregate and return top 3-5 concerns
+            const freq: { [k: string]: number } = {};
+            allConcerns.forEach((c) => {
+                const key = c.trim().toLowerCase();
+                if (!key) return;
+                freq[key] = (freq[key] || 0) + 1;
+            });
+            result = Object.entries(freq)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([k]) => k);
+        } catch (e) {
+            // ignore
+        }
+        done = true;
+    })();
+    // Wait up to 2 seconds for AI response
     const start = Date.now();
     while (!done && Date.now() - start < 2000) {
         require('deasync').runLoopOnce();
@@ -774,7 +810,7 @@ const extractTopConcerns = (comments: any[]) => {
 };
 
 /**
- * Extract top praises from comments using AI
+ * Extract top praises from comments using AI (improved: aggregate per comment)
  */
 const extractTopPraises = (comments: any[]) => {
     if (!model) {
@@ -786,34 +822,44 @@ const extractTopPraises = (comments: any[]) => {
             'Community involvement',
         ];
     }
-    const text = comments.map((c) => c.content).join(' ');
-    if (!text) return [];
+    const texts = comments.map((c) => c.content).filter(Boolean);
+    if (!texts.length) return [];
     let result: string[] = [];
-    const prompt = `
-    From the following comments, extract the top 3-5 positive praises or compliments expressed by users. 
-    Respond with a JSON array of short phrases, no extra text.
-    Comments: """${text}"""
-    `;
     let done = false;
-    model
-        .generateContent(prompt)
-        .then((aiResult) => {
-            try {
+    (async () => {
+        try {
+            const allPraises: string[] = [];
+            for (const text of texts) {
+                const prompt = `
+                From the following comment, extract the main praise or compliment (if any) as a short phrase. If none, return an empty array.
+                Respond with a JSON array of short phrases, no extra text.
+                Comment: """${text}"""
+                `;
+                const aiResult = await model.generateContent(prompt);
                 const response = aiResult.response
                     .text()
                     .replace(/```(json)?/g, '')
                     .replace(/```/g, '')
                     .trim();
                 const arr = JSON.parse(response);
-                if (Array.isArray(arr)) result = arr;
-            } catch (e) {
-                // ignore
+                if (Array.isArray(arr)) allPraises.push(...arr);
             }
-            done = true;
-        })
-        .catch(() => {
-            done = true;
-        });
+            // Aggregate and return top 3-5 praises
+            const freq: { [k: string]: number } = {};
+            allPraises.forEach((c) => {
+                const key = c.trim().toLowerCase();
+                if (!key) return;
+                freq[key] = (freq[key] || 0) + 1;
+            });
+            result = Object.entries(freq)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([k]) => k);
+        } catch (e) {
+            // ignore
+        }
+        done = true;
+    })();
     // Wait up to 2 seconds for AI response
     const start = Date.now();
     while (!done && Date.now() - start < 2000) {

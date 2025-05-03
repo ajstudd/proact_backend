@@ -63,6 +63,7 @@ const AggregateAnalysisSchema = new Schema(
                 },
             ],
             topConcerns: [String],
+            topPraises: [String], // <-- Add this line
         },
         corruptionReports: {
             totalReports: { type: Number, default: 0 },
