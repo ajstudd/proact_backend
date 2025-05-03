@@ -202,6 +202,67 @@ export const analyzeReportWithAI = async (
     fileType: string,
     fileUrl: string
 ): Promise<AIAnalysisResult> => {
-    // Simply use the existing function but adapt the parameters
     return analyzeCorruptionReport(description, fileType !== 'none');
+};
+
+export const analyzeCommentSentiment = async (
+    text: string
+): Promise<string> => {
+    try {
+        if (!API_KEY) {
+            console.warn(
+                'Using default sentiment analysis because no API key is provided'
+            );
+            // Simple keyword-based fallback
+            const positiveWords = [
+                'good',
+                'great',
+                'excellent',
+                'amazing',
+                'wonderful',
+                'fantastic',
+                'happy',
+            ];
+            const negativeWords = [
+                'bad',
+                'poor',
+                'terrible',
+                'awful',
+                'horrible',
+                'unhappy',
+                'disappointed',
+            ];
+
+            const lowerText = text.toLowerCase();
+            let positiveCount = 0;
+            let negativeCount = 0;
+
+            positiveWords.forEach((word) => {
+                if (lowerText.includes(word)) positiveCount++;
+            });
+
+            negativeWords.forEach((word) => {
+                if (lowerText.includes(word)) negativeCount++;
+            });
+
+            if (positiveCount > negativeCount) return 'positive';
+            if (negativeCount > positiveCount) return 'negative';
+            return 'neutral';
+        }
+
+        const prompt = `
+        Analyze the sentiment of this text and respond with only one of these three words: positive, negative, or neutral.
+        Text: "${text}"
+        `;
+
+        const result = await model.generateContent(prompt);
+        const response = result.response.text().toLowerCase().trim();
+
+        if (response.includes('positive')) return 'positive';
+        if (response.includes('negative')) return 'negative';
+        return 'neutral';
+    } catch (error) {
+        console.error('Error in sentiment analysis:', error);
+        return 'neutral'; // Default to neutral on error
+    }
 };

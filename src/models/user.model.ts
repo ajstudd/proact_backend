@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model, models } from 'mongoose';
 import { IUser } from '@/types';
 
 const UserSchema = new Schema<IUser>(
@@ -124,8 +124,19 @@ const UserSchema = new Schema<IUser>(
     }
 );
 
+UserSchema.virtual('id').get(function () {
+    return this._id.toString();
+});
+
+// Ensure the virtuals are included in JSON and Object outputs
+UserSchema.set('toJSON', { virtuals: true });
+UserSchema.set('toObject', { virtuals: true });
+
 UserSchema.index({ email: 1 });
 UserSchema.index({ phone: 1 });
 UserSchema.index({ name: 'text', username: 'text' });
 
-export default model<IUser>('User', UserSchema, 'users');
+// Check if the model already exists before defining it
+const User = models.User || model<IUser>('User', UserSchema);
+
+export default User;

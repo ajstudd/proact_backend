@@ -2,8 +2,9 @@
 import { RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 import { HttpError } from '../helpers/HttpError';
-import { AuthToken, IRequestUser } from '../types';
+import { AuthToken, IRequestUser, IUser } from '../types';
 import userService from '../services/user.service';
+import User from '../models/user.model';
 
 interface TokenVerificationOptions {
     strict: boolean;
@@ -64,7 +65,7 @@ export const verifyToken = (
             console.log('✅ [verifyToken] Token decoded. User ID:', decoded.id);
 
             // Step 3: Fetch user from database
-            const user = await userService.getUserById(decoded.id);
+            const user = await User.findById(decoded.id).lean<IUser>();
             if (!user) {
                 console.error('❌ [verifyToken] User not found in database.');
                 return res

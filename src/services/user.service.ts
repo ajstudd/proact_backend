@@ -7,18 +7,28 @@ import mongoose from 'mongoose';
 import crypto from 'crypto';
 import emailService from './email.service';
 
-const getUserById = async (userId: string) => {
-    const user = await User.findById(userId).lean();
-    if (!user) {
-        throw new HttpError({ message: 'User not found!', code: 404 });
-    }
+export const getUserById = async (id: string): Promise<IUser | null> => {
+    const user = await User.findById(id).lean<IUser>();
     return user;
+};
+
+// Ensure bookmarks and other fields are properly typed
+export const getUserProfileData = (user: IUser) => {
+    return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        bookmarks: user.bookmarks || [],
+        // ...other fields...
+    };
 };
 
 const updateUser = async (payload: UpdateUserPayload, userId: string) => {
     const updatedUser = await User.findByIdAndUpdate(userId, payload, {
         new: true,
-    }).lean();
+    }).lean<IUser>(); // Ensure the result is typed as IUser
     if (!updatedUser) {
         throw new HttpError({ message: 'User not found!', code: 404 });
     }
@@ -132,7 +142,7 @@ const bookmarkProject = async (userId: string, projectId: string) => {
             path: 'bookmarks',
             select: 'title bannerUrl description location budget createdAt',
         })
-        .lean();
+        .lean<IUser>(); // Ensure the result is typed as IUser
 
     if (!user) {
         throw new HttpError({ message: 'User not found!', code: 404 });
@@ -140,7 +150,7 @@ const bookmarkProject = async (userId: string, projectId: string) => {
 
     return {
         message: 'Project bookmarked successfully',
-        bookmarks: user.bookmarks,
+        bookmarks: user.bookmarks, // Ensure bookmarks is accessible
     };
 };
 
@@ -158,7 +168,7 @@ const removeBookmark = async (userId: string, projectId: string) => {
             path: 'bookmarks',
             select: 'title bannerUrl description location budget createdAt',
         })
-        .lean();
+        .lean<IUser>(); // Ensure the result is typed as IUser
 
     if (!user) {
         throw new HttpError({ message: 'User not found!', code: 404 });
@@ -166,7 +176,7 @@ const removeBookmark = async (userId: string, projectId: string) => {
 
     return {
         message: 'Bookmark removed successfully',
-        bookmarks: user.bookmarks,
+        bookmarks: user.bookmarks, // Ensure bookmarks is accessible
     };
 };
 
@@ -180,13 +190,13 @@ const getBookmarkedProjects = async (userId: string) => {
                 { path: 'government', select: 'name _id' },
             ],
         })
-        .lean();
+        .lean<IUser>(); // Ensure the result is typed as IUser
 
     if (!user) {
         throw new HttpError({ message: 'User not found!', code: 404 });
     }
 
-    return user.bookmarks || [];
+    return user.bookmarks || []; // Ensure bookmarks is accessible
 };
 
 const editUserProfile = async (userId: string, payload: UpdateUserPayload) => {
@@ -286,7 +296,7 @@ const editUserProfile = async (userId: string, payload: UpdateUserPayload) => {
 
     const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
         new: true,
-    }).lean();
+    }).lean<IUser>(); // Ensure the result is typed as IUser
 
     // If we successfully updated the user and there was a photo change, we could
     // delete the old photo from GridFS here if needed
@@ -335,17 +345,6 @@ const verifyEmailUpdate = async (token: string, email: string) => {
     await user.save();
 
     return getUserProfileData(user.toObject());
-};
-
-const getUserProfileData = (user: IUser) => {
-    const {
-        password,
-        resetPasswordToken,
-        resetPasswordExpires,
-        ...safeUserData
-    } = user;
-
-    return safeUserData;
 };
 
 const getUserProfile = async (userId: string) => {
