@@ -154,26 +154,103 @@ export const getAllTrimmedProjects = async (userId?: string) => {
 
 export const addUpdateToProject = async (
     projectId: string,
-    updateData: { content: string; media?: string[] }
+    updateData: {
+        content: string;
+        media?: string[];
+        purchasedItems?: any[];
+        utilisedItems?: any[];
+    }
 ) => {
+    console.log('updateData', updateData);
     try {
-        const project = await Project.findByIdAndUpdate(
-            projectId,
-            {
-                $push: {
-                    updates: {
-                        content: updateData.content,
-                        media: updateData.media || [],
-                        date: new Date(),
-                    },
-                },
-            },
-            { new: true }
-        );
-
+        const project = await Project.findById(projectId);
         if (!project) {
             throw new Error('Project not found!');
         }
+
+        // Add purchased items to inventory and update expenditure
+        let totalSpent = 0;
+        if (
+            updateData.purchasedItems &&
+            Array.isArray(updateData.purchasedItems)
+        ) {
+            updateData.purchasedItems.forEach((item) => {
+                const idx = project.inventory.findIndex(
+                    (inv: any) => inv.name === item.name
+                );
+                if (idx >= 0) {
+                    project.inventory[idx].quantity += item.quantity;
+                    project.inventory[idx].totalSpent +=
+                        item.price * item.quantity;
+                } else {
+                    project.inventory.push({
+                        name: item.name,
+                        quantity: item.quantity,
+                        price: item.price,
+                        totalSpent: item.price * item.quantity,
+                    });
+                }
+                totalSpent += item.price * item.quantity;
+            });
+            project.expenditure += totalSpent;
+        }
+
+        // Deduct utilised items from inventory and add to usedItems
+        if (
+            updateData.utilisedItems &&
+            Array.isArray(updateData.utilisedItems)
+        ) {
+            // Check inventory before deduction
+            for (const item of updateData.utilisedItems) {
+                const idx = project.inventory.findIndex(
+                    (inv: any) => inv.name === item.name
+                );
+                if (
+                    idx < 0 ||
+                    project.inventory[idx].quantity < item.quantity
+                ) {
+                    throw new Error(
+                        `Not enough quantity of "${item.name}" in inventory to utilise.`
+                    );
+                }
+            }
+            // Deduct after all checks pass
+            updateData.utilisedItems.forEach((item: any) => {
+                const idx = project.inventory.findIndex(
+                    (inv: any) => inv.name === item.name
+                );
+                if (idx >= 0) {
+                    project.inventory[idx].quantity -= item.quantity;
+                    if (project.inventory[idx].quantity < 0)
+                        project.inventory[idx].quantity = 0;
+                }
+                // Track used items
+                const usedIdx = project.usedItems.findIndex(
+                    (u: any) => u.name === item.name
+                );
+                if (usedIdx >= 0) {
+                    project.usedItems[usedIdx].quantity += item.quantity;
+                } else {
+                    project.usedItems.push({
+                        name: item.name,
+                        quantity: item.quantity,
+                    });
+                }
+            });
+        }
+
+        // Save project with updated inventory/expenditure
+        await project.save();
+
+        // Add update with purchased/utilised items
+        project.updates.push({
+            content: updateData.content,
+            media: updateData.media || [],
+            purchasedItems: updateData.purchasedItems || [],
+            utilisedItems: updateData.utilisedItems || [],
+        });
+        await project.save();
+
         return project;
     } catch (error) {
         console.log(error);

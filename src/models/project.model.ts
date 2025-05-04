@@ -22,6 +22,34 @@ const ProjectSchema = new Schema(
                 content: { type: String, required: true },
                 media: [{ type: String }],
                 date: { type: Date, default: Date.now },
+                // Optionally, you can add a field for items in the update itself
+                purchasedItems: [
+                    {
+                        name: { type: String, required: true },
+                        quantity: { type: Number, required: true },
+                        price: { type: Number, required: true },
+                    },
+                ],
+                utilisedItems: [
+                    {
+                        name: { type: String, required: true },
+                        quantity: { type: Number, required: true },
+                    },
+                ],
+            },
+        ],
+        inventory: [
+            {
+                name: { type: String, required: true },
+                quantity: { type: Number, required: true },
+                price: { type: Number, required: true },
+                totalSpent: { type: Number, required: true },
+            },
+        ],
+        usedItems: [
+            {
+                name: { type: String, required: true },
+                quantity: { type: Number, required: true },
             },
         ],
         associatedProfiles: [{ type: Schema.Types.ObjectId, ref: 'User' }],

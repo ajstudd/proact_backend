@@ -19,6 +19,42 @@ import {
 } from '@/services/project.service';
 import { uploadFile } from '../services/fileUpload.service';
 import notificationService from '@/services/notification.service';
+import Project from '../models/project.model';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import dotenv from 'dotenv';
+dotenv.config();
+
+const API_KEY = process.env.GEMINI_API_KEY;
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+const model = genAI
+    ? genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    : null;
+
+const extractUtilisedItems = async (content: string) => {
+    if (!model) return [];
+    const prompt = `
+    Extract all items and their quantities that were used or consumed from the following project update content.
+    Respond with a JSON array of objects in this format:
+    [
+      { "name": "item name", "quantity": number }
+    ]
+    Only respond with the JSON array, no extra text.
+    Content: """${content}"""
+    `;
+    try {
+        const result = await model.generateContent(prompt);
+        let response = result.response
+            .text()
+            .replace(/```(json)?/g, '')
+            .replace(/```/g, '')
+            .trim();
+        const items = JSON.parse(response);
+        if (Array.isArray(items)) return items;
+        return [];
+    } catch (e) {
+        return [];
+    }
+};
 
 export const createProjectController = async (
     req: CustomRequest,
@@ -136,7 +172,7 @@ export const addProjectUpdateController = async (
 ) => {
     try {
         const { projectId } = req.params;
-        const { content } = req.body;
+        const { content, purchasedItems } = req.body;
         const files = req.files as {
             [fieldname: string]: Express.Multer.File[];
         };
@@ -150,10 +186,82 @@ export const addProjectUpdateController = async (
             }
         }
 
-        const project = await addUpdateToProject(projectId, {
+        // Parse purchasedItems from body (should be array of {name, quantity, price})
+        let items: any[] = [];
+        if (purchasedItems) {
+            try {
+                items =
+                    typeof purchasedItems === 'string'
+                        ? JSON.parse(purchasedItems)
+                        : purchasedItems;
+            } catch {
+                items = [];
+            }
+        }
+
+        // Extract utilised items from content using AI/NLP
+        const utilisedItems = await extractUtilisedItems(content);
+
+        // Update project inventory and expenditure
+        const project = await Project.findById(projectId);
+        if (!project) throw new Error('Project not found!');
+
+        // Add purchased items to inventory and update expenditure
+        let totalSpent = 0;
+        items.forEach((item) => {
+            const idx = project.inventory.findIndex(
+                (inv: any) => inv.name === item.name
+            );
+            if (idx >= 0) {
+                project.inventory[idx].quantity += item.quantity;
+                project.inventory[idx].totalSpent += item.price * item.quantity;
+            } else {
+                project.inventory.push({
+                    name: item.name,
+                    quantity: item.quantity,
+                    price: item.price,
+                    totalSpent: item.price * item.quantity,
+                });
+            }
+            totalSpent += item.price * item.quantity;
+        });
+        project.expenditure += totalSpent;
+
+        // Deduct utilised items from inventory and add to usedItems
+        utilisedItems.forEach((item: any) => {
+            const idx = project.inventory.findIndex(
+                (inv: any) => inv.name === item.name
+            );
+            if (idx >= 0) {
+                project.inventory[idx].quantity -= item.quantity;
+                if (project.inventory[idx].quantity < 0)
+                    project.inventory[idx].quantity = 0;
+            }
+            // Track used items
+            const usedIdx = project.usedItems.findIndex(
+                (u: any) => u.name === item.name
+            );
+            if (usedIdx >= 0) {
+                project.usedItems[usedIdx].quantity += item.quantity;
+            } else {
+                project.usedItems.push({
+                    name: item.name,
+                    quantity: item.quantity,
+                });
+            }
+        });
+
+        // Save project with updated inventory/expenditure
+        await project.save();
+
+        // Add update with purchased/utilised items
+        project.updates.push({
             content,
             media: mediaUrls,
+            purchasedItems: items,
+            utilisedItems,
         });
+        await project.save();
 
         if (
             req.user &&
