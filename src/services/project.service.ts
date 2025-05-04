@@ -168,6 +168,46 @@ export const addUpdateToProject = async (
             throw new Error('Project not found!');
         }
 
+        // Validate purchasedItems
+        if (
+            updateData.purchasedItems &&
+            Array.isArray(updateData.purchasedItems)
+        ) {
+            for (const item of updateData.purchasedItems) {
+                if (
+                    !item.name ||
+                    typeof item.name !== 'string' ||
+                    typeof item.quantity !== 'number' ||
+                    item.quantity <= 0 ||
+                    typeof item.price !== 'number' ||
+                    item.price < 0
+                ) {
+                    throw new Error(
+                        `Invalid purchased item data: ${JSON.stringify(item)}`
+                    );
+                }
+            }
+        }
+
+        // Validate utilisedItems
+        if (
+            updateData.utilisedItems &&
+            Array.isArray(updateData.utilisedItems)
+        ) {
+            for (const item of updateData.utilisedItems) {
+                if (
+                    !item.name ||
+                    typeof item.name !== 'string' ||
+                    typeof item.quantity !== 'number' ||
+                    item.quantity <= 0
+                ) {
+                    throw new Error(
+                        `Invalid utilised item data: ${JSON.stringify(item)}`
+                    );
+                }
+            }
+        }
+
         // Add purchased items to inventory and update expenditure
         let totalSpent = 0;
         if (
@@ -176,7 +216,8 @@ export const addUpdateToProject = async (
         ) {
             updateData.purchasedItems.forEach((item) => {
                 const idx = project.inventory.findIndex(
-                    (inv: any) => inv.name === item.name
+                    (inv: any) =>
+                        inv.name.toLowerCase() === item.name.toLowerCase()
                 );
                 if (idx >= 0) {
                     project.inventory[idx].quantity += item.quantity;
@@ -192,6 +233,12 @@ export const addUpdateToProject = async (
                 }
                 totalSpent += item.price * item.quantity;
             });
+            // Check if budget is available
+            if (project.expenditure + totalSpent > project.budget) {
+                throw new Error(
+                    `Insufficient budget. Attempted to spend ${project.expenditure + totalSpent}, but budget is ${project.budget}.`
+                );
+            }
             project.expenditure += totalSpent;
         }
 
@@ -203,21 +250,25 @@ export const addUpdateToProject = async (
             // Check inventory before deduction
             for (const item of updateData.utilisedItems) {
                 const idx = project.inventory.findIndex(
-                    (inv: any) => inv.name === item.name
+                    (inv: any) =>
+                        inv.name.toLowerCase() === item.name.toLowerCase()
                 );
-                if (
-                    idx < 0 ||
-                    project.inventory[idx].quantity < item.quantity
-                ) {
+                if (idx < 0) {
                     throw new Error(
-                        `Not enough quantity of "${item.name}" in inventory to utilise.`
+                        `Item "${item.name}" is not available in inventory.`
+                    );
+                }
+                if (project.inventory[idx].quantity < item.quantity) {
+                    throw new Error(
+                        `Not enough quantity of "${item.name}" in inventory to utilise. Available: ${project.inventory[idx].quantity}, Requested: ${item.quantity}`
                     );
                 }
             }
             // Deduct after all checks pass
             updateData.utilisedItems.forEach((item: any) => {
                 const idx = project.inventory.findIndex(
-                    (inv: any) => inv.name === item.name
+                    (inv: any) =>
+                        inv.name.toLowerCase() === item.name.toLowerCase()
                 );
                 if (idx >= 0) {
                     project.inventory[idx].quantity -= item.quantity;
@@ -226,7 +277,7 @@ export const addUpdateToProject = async (
                 }
                 // Track used items
                 const usedIdx = project.usedItems.findIndex(
-                    (u: any) => u.name === item.name
+                    (u: any) => u.name.toLowerCase() === item.name.toLowerCase()
                 );
                 if (usedIdx >= 0) {
                     project.usedItems[usedIdx].quantity += item.quantity;
@@ -252,7 +303,18 @@ export const addUpdateToProject = async (
         await project.save();
 
         return project;
-    } catch (error) {
+    } catch (error: any) {
+        // Provide more specific error messages for known cases
+        if (
+            error.message &&
+            (error.message.includes('not available in inventory') ||
+                error.message.includes('Not enough quantity') ||
+                error.message.includes('Insufficient budget') ||
+                error.message.includes('Invalid purchased item data') ||
+                error.message.includes('Invalid utilised item data'))
+        ) {
+            throw new Error(error.message);
+        }
         console.log(error);
         throw new Error('Adding update to project failed!');
     }
