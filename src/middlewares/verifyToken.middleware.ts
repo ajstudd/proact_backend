@@ -25,10 +25,7 @@ export const verifyToken = (
     options: TokenVerificationOptions = { strict: true }
 ): RequestHandler => {
     return async (req, res, next) => {
-        console.log('🔍 [verifyToken] Middleware triggered.');
-
         try {
-            // Step 1: Extract token from headers
             const authHeader = req.headers.authorization;
             if (!authHeader || !authHeader.startsWith('Bearer ')) {
                 console.warn(
@@ -40,14 +37,12 @@ export const verifyToken = (
                         .status(401)
                         .json({ message: 'Unauthorized: Token required' });
                 } else {
-                    return next(); // Allow request to proceed if strict mode is disabled
+                    return next();
                 }
             }
 
             const token = authHeader.split(' ')[1].trim();
-            console.log('🔍 [verifyToken] Extracted Token:', token);
 
-            // Step 2: Verify and decode token
             let decoded: AuthToken;
             try {
                 const secret = process.env.JWT_TOKEN_SECRET;
@@ -61,10 +56,6 @@ export const verifyToken = (
                     .status(401)
                     .json({ message: 'Unauthorized: Invalid token' });
             }
-
-            console.log('✅ [verifyToken] Token decoded. User ID:', decoded.id);
-
-            // Step 3: Fetch user from database
             const user = await User.findById(decoded.id).lean<IUser>();
             if (!user) {
                 console.error('❌ [verifyToken] User not found in database.');
@@ -73,9 +64,6 @@ export const verifyToken = (
                     .json({ message: 'Unauthorized: User does not exist' });
             }
 
-            console.log('✅ [verifyToken] User found:', user.email);
-
-            // Step 4: Attach user data to request object
             req.user = {
                 id: user._id.toString(),
                 _id: user._id.toString(),
@@ -86,7 +74,7 @@ export const verifyToken = (
                 role: user.role,
             };
 
-            next(); // Proceed to the next middleware or route
+            next();
         } catch (error) {
             console.error('❌ [verifyToken] Unexpected error:', error);
             return res.status(500).json({ message: 'Internal server error' });

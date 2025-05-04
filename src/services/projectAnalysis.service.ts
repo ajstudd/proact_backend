@@ -145,6 +145,10 @@ export const generateProjectAnalysis = async (projectId: string) => {
         // Extract comment tags and categorize by sentiment
         const commentTags = await extractCommentTags(comments);
 
+        // Use await for topConcerns and topPraises
+        const topConcerns = await extractTopConcerns(comments);
+        const topPraises = await extractTopPraises(comments);
+
         const analysis = await ProjectAnalysis.findOneAndUpdate(
             { project: projectId },
             {
@@ -178,8 +182,8 @@ export const generateProjectAnalysis = async (projectId: string) => {
                 },
                 commentAnalysis: {
                     tags: commentTags,
-                    topConcerns: extractTopConcerns(comments),
-                    topPraises: extractTopPraises(comments),
+                    topConcerns, // updated
+                    topPraises, // updated
                 },
                 corruptionReportMetrics: {
                     reportCount,
@@ -228,6 +232,7 @@ export const generateAggregateAnalysis = async (governmentId: string) => {
         }
 
         const projectIds = projects.map((p) => p._id);
+        console.log('projectIds', projectIds);
 
         // Calculate project status counts
         const today = new Date();
@@ -261,6 +266,7 @@ export const generateAggregateAnalysis = async (governmentId: string) => {
         const allComments = await Comment.find({
             project: { $in: projectIds },
         }).lean();
+        console.log('allComments', allComments);
 
         // Analyze comment sentiment
         const commentTexts = allComments.map((c) => c.content);
@@ -408,6 +414,10 @@ export const generateAggregateAnalysis = async (governmentId: string) => {
             .slice(0, 5)
             .map((tag) => ({ tag: tag.tag, count: tag.count }));
 
+        // Use await for topConcerns and topPraises
+        const topConcerns = await extractTopConcerns(allComments);
+        const topPraises = await extractTopPraises(allComments);
+
         // Update or create aggregate analysis
         const aggregateAnalysis = await AggregateAnalysis.findOneAndUpdate(
             { governmentId },
@@ -438,8 +448,8 @@ export const generateAggregateAnalysis = async (governmentId: string) => {
                 publicSentiment: {
                     topPositiveTags: positiveTags,
                     topNegativeTags: negativeTags,
-                    topConcerns: extractTopConcerns(allComments),
-                    topPraises: extractTopPraises(allComments), // <-- Add this line
+                    topConcerns, // updated
+                    topPraises, // updated
                 },
                 corruptionReports: {
                     totalReports,
@@ -745,7 +755,7 @@ const extractCommentTags = async (comments: any[]) => {
 /**
  * Extract top concerns from comments using AI (improved: aggregate per comment)
  */
-const extractTopConcerns = (comments: any[]) => {
+const extractTopConcerns = async (comments: any[]) => {
     if (!model) {
         // fallback: return mock concerns if no API key
         return [
@@ -757,62 +767,43 @@ const extractTopConcerns = (comments: any[]) => {
     }
     const texts = comments.map((c) => c.content).filter(Boolean);
     if (!texts.length) return [];
-    // Use AI to extract concerns from each comment, then aggregate
-    let result: string[] = [];
-    let done = false;
-    (async () => {
-        try {
-            const allConcerns: string[] = [];
-            for (const text of texts) {
-                const prompt = `
+    try {
+        const allConcerns: string[] = [];
+        for (const text of texts) {
+            const prompt = `
                 From the following comment, extract the main concern or complaint (if any) as a short phrase. If none, return an empty array.
                 Respond with a JSON array of short phrases, no extra text.
                 Comment: """${text}"""
-                `;
-                const aiResult = await model.generateContent(prompt);
-                const response = aiResult.response
-                    .text()
-                    .replace(/```(json)?/g, '')
-                    .replace(/```/g, '')
-                    .trim();
-                const arr = JSON.parse(response);
-                if (Array.isArray(arr)) allConcerns.push(...arr);
-            }
-            // Aggregate and return top 3-5 concerns
-            const freq: { [k: string]: number } = {};
-            allConcerns.forEach((c) => {
-                const key = c.trim().toLowerCase();
-                if (!key) return;
-                freq[key] = (freq[key] || 0) + 1;
-            });
-            result = Object.entries(freq)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5)
-                .map(([k]) => k);
-        } catch (e) {
-            // ignore
+            `;
+            const aiResult = await model.generateContent(prompt);
+            const response = aiResult.response
+                .text()
+                .replace(/```(json)?/g, '')
+                .replace(/```/g, '')
+                .trim();
+            const arr = JSON.parse(response);
+            if (Array.isArray(arr)) allConcerns.push(...arr);
         }
-        done = true;
-    })();
-    // Wait up to 2 seconds for AI response
-    const start = Date.now();
-    while (!done && Date.now() - start < 2000) {
-        require('deasync').runLoopOnce();
+        // Aggregate and return top 3-5 concerns
+        const freq: { [k: string]: number } = {};
+        allConcerns.forEach((c) => {
+            const key = c.trim().toLowerCase();
+            if (!key) return;
+            freq[key] = (freq[key] || 0) + 1;
+        });
+        return Object.entries(freq)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([k]) => k);
+    } catch (e) {
+        return [];
     }
-    return result.length
-        ? result
-        : [
-              'Delayed timeline',
-              'Poor material quality',
-              'Lack of safety measures',
-              'Environmental impact',
-          ];
 };
 
 /**
  * Extract top praises from comments using AI (improved: aggregate per comment)
  */
-const extractTopPraises = (comments: any[]) => {
+const extractTopPraises = async (comments: any[]) => {
     if (!model) {
         // fallback: return mock praises if no API key
         return [
@@ -824,55 +815,37 @@ const extractTopPraises = (comments: any[]) => {
     }
     const texts = comments.map((c) => c.content).filter(Boolean);
     if (!texts.length) return [];
-    let result: string[] = [];
-    let done = false;
-    (async () => {
-        try {
-            const allPraises: string[] = [];
-            for (const text of texts) {
-                const prompt = `
+    try {
+        const allPraises: string[] = [];
+        for (const text of texts) {
+            const prompt = `
                 From the following comment, extract the main praise or compliment (if any) as a short phrase. If none, return an empty array.
                 Respond with a JSON array of short phrases, no extra text.
                 Comment: """${text}"""
-                `;
-                const aiResult = await model.generateContent(prompt);
-                const response = aiResult.response
-                    .text()
-                    .replace(/```(json)?/g, '')
-                    .replace(/```/g, '')
-                    .trim();
-                const arr = JSON.parse(response);
-                if (Array.isArray(arr)) allPraises.push(...arr);
-            }
-            // Aggregate and return top 3-5 praises
-            const freq: { [k: string]: number } = {};
-            allPraises.forEach((c) => {
-                const key = c.trim().toLowerCase();
-                if (!key) return;
-                freq[key] = (freq[key] || 0) + 1;
-            });
-            result = Object.entries(freq)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5)
-                .map(([k]) => k);
-        } catch (e) {
-            // ignore
+            `;
+            const aiResult = await model.generateContent(prompt);
+            const response = aiResult.response
+                .text()
+                .replace(/```(json)?/g, '')
+                .replace(/```/g, '')
+                .trim();
+            const arr = JSON.parse(response);
+            if (Array.isArray(arr)) allPraises.push(...arr);
         }
-        done = true;
-    })();
-    // Wait up to 2 seconds for AI response
-    const start = Date.now();
-    while (!done && Date.now() - start < 2000) {
-        require('deasync').runLoopOnce();
+        // Aggregate and return top 3-5 praises
+        const freq: { [k: string]: number } = {};
+        allPraises.forEach((c) => {
+            const key = c.trim().toLowerCase();
+            if (!key) return;
+            freq[key] = (freq[key] || 0) + 1;
+        });
+        return Object.entries(freq)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([k]) => k);
+    } catch (e) {
+        return [];
     }
-    return result.length
-        ? result
-        : [
-              'Efficient work',
-              'Good communication',
-              'Quality construction',
-              'Community involvement',
-          ];
 };
 
 // Export all functions
