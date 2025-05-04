@@ -171,104 +171,80 @@ export const addProjectUpdateController = async (
     res: Response
 ) => {
     try {
+        const { content } = req.body;
+        let { media, purchasedItems, utilisedItems } = req.body;
         const { projectId } = req.params;
-        const { content, purchasedItems } = req.body;
+
+        if (typeof purchasedItems === 'string') {
+            try {
+                purchasedItems = JSON.parse(purchasedItems);
+            } catch {
+                purchasedItems = [];
+            }
+        }
+        if (typeof utilisedItems === 'string') {
+            try {
+                utilisedItems = JSON.parse(utilisedItems);
+            } catch {
+                utilisedItems = [];
+            }
+        }
+        if (typeof media === 'string') {
+            try {
+                media = JSON.parse(media);
+            } catch {
+                media = [];
+            }
+        }
+
         const files = req.files as {
             [fieldname: string]: Express.Multer.File[];
         };
-
-        const mediaUrls: string[] = [];
-
         if (files && files.media && files.media.length > 0) {
+            const uploadedMedia: string[] = [];
             for (const file of files.media) {
                 const uploadResult = await uploadFile(file);
-                mediaUrls.push(uploadResult.url);
+                uploadedMedia.push(uploadResult.url);
+            }
+            media =
+                media && Array.isArray(media)
+                    ? [...media, ...uploadedMedia]
+                    : uploadedMedia;
+        }
+
+        // Use AI to extract purchased/utilised items if missing
+        if (
+            !purchasedItems ||
+            purchasedItems.length === 0 ||
+            !utilisedItems ||
+            utilisedItems.length === 0
+        ) {
+            const aiItems = await extractUtilisedItems(content);
+            // If both are empty, assign all to utilisedItems
+            if (
+                (!purchasedItems || purchasedItems.length === 0) &&
+                (!utilisedItems || utilisedItems.length === 0)
+            ) {
+                utilisedItems = aiItems;
+            } else if (!utilisedItems || utilisedItems.length === 0) {
+                utilisedItems = aiItems;
+            } else if (!purchasedItems || purchasedItems.length === 0) {
+                purchasedItems = aiItems;
             }
         }
 
-        // Parse purchasedItems from body (should be array of {name, quantity, price})
-        let items: any[] = [];
-        if (purchasedItems) {
-            try {
-                items =
-                    typeof purchasedItems === 'string'
-                        ? JSON.parse(purchasedItems)
-                        : purchasedItems;
-            } catch {
-                items = [];
-            }
-        }
-
-        // Extract utilised items from content using AI/NLP
-        const utilisedItems = await extractUtilisedItems(content);
-
-        // Update project inventory and expenditure
-        const project = await Project.findById(projectId);
-        if (!project) throw new Error('Project not found!');
-
-        // Add purchased items to inventory and update expenditure
-        let totalSpent = 0;
-        items.forEach((item) => {
-            const idx = project.inventory.findIndex(
-                (inv: any) => inv.name === item.name
-            );
-            if (idx >= 0) {
-                project.inventory[idx].quantity += item.quantity;
-                project.inventory[idx].totalSpent += item.price * item.quantity;
-            } else {
-                project.inventory.push({
-                    name: item.name,
-                    quantity: item.quantity,
-                    price: item.price,
-                    totalSpent: item.price * item.quantity,
-                });
-            }
-            totalSpent += item.price * item.quantity;
-        });
-        project.expenditure += totalSpent;
-
-        // Deduct utilised items from inventory and add to usedItems
-        utilisedItems.forEach((item: any) => {
-            const idx = project.inventory.findIndex(
-                (inv: any) => inv.name === item.name
-            );
-            if (idx >= 0) {
-                project.inventory[idx].quantity -= item.quantity;
-                if (project.inventory[idx].quantity < 0)
-                    project.inventory[idx].quantity = 0;
-            }
-            // Track used items
-            const usedIdx = project.usedItems.findIndex(
-                (u: any) => u.name === item.name
-            );
-            if (usedIdx >= 0) {
-                project.usedItems[usedIdx].quantity += item.quantity;
-            } else {
-                project.usedItems.push({
-                    name: item.name,
-                    quantity: item.quantity,
-                });
-            }
-        });
-
-        // Save project with updated inventory/expenditure
-        await project.save();
-
-        // Add update with purchased/utilised items
-        project.updates.push({
+        const project = await addUpdateToProject(projectId, {
             content,
-            media: mediaUrls,
-            purchasedItems: items,
+            media,
+            purchasedItems,
             utilisedItems,
         });
-        await project.save();
 
         if (
             req.user &&
             project.contractor.toString() === req.user.id.toString()
         ) {
             const governmentId = project.government.toString();
-
             await notificationService.createNotification({
                 recipientId: governmentId,
                 senderId: req.user.id,
@@ -278,7 +254,7 @@ export const addProjectUpdateController = async (
                 entityType: 'Project',
                 metadata: {
                     projectTitle: project.title,
-                    updateContent: content.substring(0, 100), // First 100 chars of update
+                    updateContent: content?.substring(0, 100) || '',
                 },
             });
         }
