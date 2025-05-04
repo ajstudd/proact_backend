@@ -166,6 +166,37 @@ export const getAllTrimmedProjectsController = async (
     }
 };
 
+// Helper to detect if content is about utilisation or purchase
+function detectUpdateType(content: string): 'utilise' | 'purchase' | 'unknown' {
+    const lower = content.toLowerCase();
+    // Add more keywords as needed
+    const utiliseKeywords = [
+        'used',
+        'utilised',
+        'utilized',
+        'consumed',
+        'ate',
+        'drank',
+        'spent',
+        'deployed',
+        'applied',
+    ];
+    const purchaseKeywords = [
+        'bought',
+        'purchased',
+        'procured',
+        'acquired',
+        'ordered',
+        'received',
+        'got',
+        'obtained',
+    ];
+    if (utiliseKeywords.some((word) => lower.includes(word))) return 'utilise';
+    if (purchaseKeywords.some((word) => lower.includes(word)))
+        return 'purchase';
+    return 'unknown';
+}
+
 export const addProjectUpdateController = async (
     req: CustomRequest,
     res: Response
@@ -220,16 +251,22 @@ export const addProjectUpdateController = async (
             utilisedItems.length === 0
         ) {
             const aiItems = await extractUtilisedItems(content);
-            // If both are empty, assign all to utilisedItems
-            if (
-                (!purchasedItems || purchasedItems.length === 0) &&
-                (!utilisedItems || utilisedItems.length === 0)
-            ) {
-                utilisedItems = aiItems;
-            } else if (!utilisedItems || utilisedItems.length === 0) {
-                utilisedItems = aiItems;
-            } else if (!purchasedItems || purchasedItems.length === 0) {
-                purchasedItems = aiItems;
+            const updateType = detectUpdateType(content);
+
+            if (updateType === 'utilise') {
+                if (!utilisedItems || utilisedItems.length === 0)
+                    utilisedItems = aiItems;
+            } else if (updateType === 'purchase') {
+                if (!purchasedItems || purchasedItems.length === 0)
+                    purchasedItems = aiItems;
+            } else {
+                // fallback: if both are empty, assign to utilisedItems
+                if (
+                    (!purchasedItems || purchasedItems.length === 0) &&
+                    (!utilisedItems || utilisedItems.length === 0)
+                ) {
+                    utilisedItems = aiItems;
+                }
             }
         }
 
