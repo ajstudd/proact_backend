@@ -8,7 +8,7 @@ on:
 jobs:
     deploy:
         runs-on: ubuntu-latest
-        environment: oracle # Use correct environment name
+        environment: oracle
 
         steps:
             - name: Checkout code
