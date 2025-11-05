@@ -1,5 +1,6 @@
 import Comment from '../models/comment.model';
 import Project from '../models/project.model';
+import User from '../models/user.model';
 import notificationService from './notification.service';
 
 export const createComment = async (commentData: {
@@ -30,11 +31,17 @@ export const createComment = async (commentData: {
                 parentComment &&
                 parentComment.user.toString() !== commentData.user
             ) {
+                // Get the sender's name
+                const sender = await User.findById(commentData.user).select(
+                    'name'
+                );
+                const senderName = sender?.name || 'Someone';
+
                 await notificationService.createNotification({
                     recipientId: parentComment.user.toString(),
                     senderId: commentData.user,
                     type: 'COMMENT',
-                    message: 'Someone replied to your comment',
+                    message: `${senderName} replied to your comment`,
                     entityId: commentData.project,
                     entityType: 'Project',
                     metadata: {
@@ -204,11 +211,15 @@ export const likeComment = async (commentId: string, userId: string) => {
             comment.user &&
             (comment.user as any)._id.toString() !== userId
         ) {
+            // Get the sender's name
+            const sender = await User.findById(userId).select('name');
+            const senderName = sender?.name || 'Someone';
+
             await notificationService.createNotification({
                 recipientId: (comment.user as any)._id.toString(),
                 senderId: userId,
                 type: 'COMMENT',
-                message: 'Someone liked your comment',
+                message: `${senderName} liked your comment`,
                 entityId: comment.project.toString(),
                 entityType: 'Project',
                 metadata: {
@@ -237,11 +248,15 @@ export const dislikeComment = async (commentId: string, userId: string) => {
             comment.user &&
             (comment.user as any)._id.toString() !== userId
         ) {
+            // Get the sender's name
+            const sender = await User.findById(userId).select('name');
+            const senderName = sender?.name || 'Someone';
+
             await notificationService.createNotification({
                 recipientId: (comment.user as any)._id.toString(),
                 senderId: userId,
                 type: 'COMMENT',
-                message: 'Someone disliked your comment',
+                message: `${senderName} disliked your comment`,
                 entityId: comment.project.toString(),
                 entityType: 'Project',
                 metadata: {
