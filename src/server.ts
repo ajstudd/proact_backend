@@ -1,4 +1,9 @@
-import 'module-alias/register';
+// Only use module-alias in production
+// In development, tsconfig-paths handles path resolution
+if (process.env.NODE_ENV !== 'development') {
+    require('module-alias/register');
+}
+
 import app from './app';
 import mongoose from 'mongoose';
 import mailer from './services/mail.service';

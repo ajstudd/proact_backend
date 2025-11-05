@@ -7,7 +7,6 @@ const router = Router();
 
 // save in public folder
 
-router.post('/comment/:imageId', catchAsync(imageController.comment));
 router.post('/save', upload.single('image'), catchAsync(imageController.save));
 router.get('/get/:imageId', catchAsync(imageController.getImageById));
 
