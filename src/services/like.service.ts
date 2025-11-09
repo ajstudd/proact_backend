@@ -1,4 +1,5 @@
 import Project from '../models/project.model';
+import User from '../models/user.model';
 import notificationService from './notification.service';
 
 export const likeProject = async (projectId: string, userId: string) => {
@@ -25,11 +26,15 @@ export const likeProject = async (projectId: string, userId: string) => {
             updatedProject.government &&
             userId !== updatedProject.government._id.toString()
         ) {
+            // Get the sender's name
+            const sender = await User.findById(userId).select('name');
+            const senderName = sender?.name || 'Someone';
+
             await notificationService.createNotification({
                 recipientId: updatedProject.government._id.toString(),
                 senderId: userId,
                 type: 'PROJECT_UPDATE',
-                message: `Someone liked your project: ${updatedProject.title}`,
+                message: `${senderName} liked your project: ${updatedProject.title}`,
                 entityId: projectId,
                 entityType: 'Project',
                 metadata: {
@@ -65,11 +70,15 @@ export const dislikeProject = async (projectId: string, userId: string) => {
             updatedProject.government &&
             userId !== updatedProject.government._id.toString()
         ) {
+            // Get the sender's name
+            const sender = await User.findById(userId).select('name');
+            const senderName = sender?.name || 'Someone';
+
             await notificationService.createNotification({
                 recipientId: updatedProject.government._id.toString(),
                 senderId: userId,
                 type: 'PROJECT_UPDATE',
-                message: `Someone disliked your project: ${updatedProject.title}`,
+                message: `${senderName} disliked your project: ${updatedProject.title}`,
                 entityId: projectId,
                 entityType: 'Project',
                 metadata: {

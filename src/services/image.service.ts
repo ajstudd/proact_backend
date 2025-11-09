@@ -1,6 +1,4 @@
 import ImageModel from '@/models/image.model';
-import postModel from '@/models/post.model';
-import { IComment } from '@/types';
 
 const saveImage = async ({
     filename,
@@ -16,24 +14,6 @@ const saveImage = async ({
     return image.toObject();
 };
 
-const applyComments = async (comment: IComment) => {
-    const image = await postModel.findOneAndUpdate(
-        {
-            _id: comment.postid,
-        },
-        {
-            $set: {
-                comments: comment,
-            },
-        },
-        {
-            new: true,
-        }
-    );
-
-    return image;
-};
-
 const getImageById = async (imageId: string) => {
     const image = await ImageModel.findById(imageId).select('+localPath');
 
@@ -42,6 +22,5 @@ const getImageById = async (imageId: string) => {
 
 export default {
     saveImage,
-    applyComments,
     getImageById,
 };

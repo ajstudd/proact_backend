@@ -2,7 +2,6 @@ import { Router } from 'express';
 import authRoute from './routes/auth.route';
 import imageRoute from './routes/image.route';
 import userRoute from './routes/user.route';
-import postRoute from './routes/post.route';
 import otpRoute from './routes/otp.routes';
 import corruptionReportRoutes from './routes/corruption-report.route';
 import fileRoute from './routes/fileUpload.route';
@@ -13,7 +12,6 @@ import notificationRoute from './routes/notification.route';
 
 const router = Router();
 
-router.use('/posts', postRoute);
 router.use('/auth', authRoute);
 router.use('/image', imageRoute);
 router.use('/user', userRoute);

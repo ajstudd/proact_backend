@@ -1,12 +1,5 @@
 import imageService from '@/services/image.service';
-import { IComment } from '@/types';
 import { Request, Response } from 'express';
-
-const comment = async (req: Request, res: Response) => {
-    const image = await imageService.applyComments(req.body);
-
-    return res.json({ message: 'Comments applied', image });
-};
 
 const save = async (req: Request, res: Response) => {
     const { file } = req;
@@ -36,8 +29,8 @@ const getImageById = async (
 
     return res.sendFile(image?.localPath ?? '');
 };
+
 export default {
-    comment,
     getImageById,
     save,
 };
