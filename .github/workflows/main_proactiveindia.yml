@@ -62,8 +62,10 @@ jobs:
                       git clean -fd     # Removes untracked files
                       git pull origin main  # Pull latest changes
 
-                      # Install dependencies
+                      # Install dependencies and build
                       npm install
+                      npm run build
 
-                      # Restart application
-                      pm2 reload ecosystem.config.js
+                      # Restart application with PM2 (reload if exists, start if not)
+                      pm2 reload ecosystem.config.js --update-env || pm2 start ecosystem.config.js
+                      pm2 save

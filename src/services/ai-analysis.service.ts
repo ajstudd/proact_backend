@@ -1,5 +1,5 @@
 // filepath: c:\Users\j7654\WorkStation\proact_backend\src\services\ai-analysis.service.ts
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { HttpError } from '@/helpers/HttpError';
 import dotenv from 'dotenv';
 
@@ -11,8 +11,7 @@ if (!API_KEY) {
     console.warn('GEMINI_API_KEY is not defined in the environment variables');
 }
 
-const genAI = new GoogleGenerativeAI(API_KEY || '');
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const ai = new GoogleGenAI({ apiKey: API_KEY || '' });
 
 // Helper function to clean AI responses before parsing JSON
 const cleanJsonResponse = (text: string): string => {
@@ -77,8 +76,11 @@ export const analyzeCorruptionReport = async (
         }
         `;
 
-        const moderationResult = await model.generateContent(moderationPrompt);
-        const moderationText = moderationResult.response.text();
+        const moderationResult = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: moderationPrompt,
+        });
+        const moderationText = moderationResult.text || '';
 
         try {
             // Clean the moderation response before parsing
@@ -153,8 +155,11 @@ export const analyzeCorruptionReport = async (
         Only respond with the JSON, no other text.
         `;
 
-        const result = await model.generateContent(prompt);
-        const textResult = result.response.text();
+        const result = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        const textResult = result.text || '';
 
         // Parse the response as JSON
         try {
@@ -255,8 +260,11 @@ export const analyzeCommentSentiment = async (
         Text: "${text}"
         `;
 
-        const result = await model.generateContent(prompt);
-        const response = result.response.text().toLowerCase().trim();
+        const result = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        const response = (result.text || '').toLowerCase().trim();
 
         if (response.includes('positive')) return 'positive';
         if (response.includes('negative')) return 'negative';

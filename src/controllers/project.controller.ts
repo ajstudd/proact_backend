@@ -20,18 +20,15 @@ import {
 import { uploadFile } from '../services/fileUpload.service';
 import notificationService from '@/services/notification.service';
 import Project from '../models/project.model';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 dotenv.config();
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
-const model = genAI
-    ? genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
-    : null;
+const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
 const extractUtilisedItems = async (content: string) => {
-    if (!model) return [];
+    if (!ai) return [];
     const prompt = `
     Extract all items and their quantities that were used or consumed from the following project update content.
     Respond with a JSON array of objects in this format:
@@ -42,9 +39,11 @@ const extractUtilisedItems = async (content: string) => {
     Content: """${content}"""
     `;
     try {
-        const result = await model.generateContent(prompt);
-        let response = result.response
-            .text()
+        const result = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        let response = (result.text || '')
             .replace(/```(json)?/g, '')
             .replace(/```/g, '')
             .trim();
