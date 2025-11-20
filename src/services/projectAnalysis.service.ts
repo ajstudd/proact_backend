@@ -7,16 +7,13 @@ import Report from '../models/report.model';
 import User from '../models/user.model';
 import { HttpError } from '../helpers/HttpError';
 import { analyzeCommentSentiment } from './ai-analysis.service';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
-const model = genAI
-    ? genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
-    : null;
+const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
 
 export const generateProjectAnalysis = async (projectId: string) => {
     try {
@@ -676,7 +673,7 @@ const analyzeCommentBatch = async (comments: string[]) => {
  * Extract tags and sentiment from a single comment using AI
  */
 const extractTagsFromComment = async (comment: string) => {
-    if (!model) return [];
+    if (!ai) return [];
     const prompt = `
     Extract up to 3 relevant tags (keywords or topics) from the following comment and classify each as "positive", "neutral", or "negative" based on the sentiment in context.
     Respond with a JSON array of objects in this format:
@@ -687,9 +684,11 @@ const extractTagsFromComment = async (comment: string) => {
     Comment: """${comment}"""
     `;
     try {
-        const result = await model.generateContent(prompt);
-        const response = result.response
-            .text()
+        const result = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        const response = (result.text || '')
             .replace(/```(json)?/g, '')
             .replace(/```/g, '')
             .trim();
@@ -756,7 +755,7 @@ const extractCommentTags = async (comments: any[]) => {
  * Extract top concerns from comments using AI (improved: aggregate per comment)
  */
 const extractTopConcerns = async (comments: any[]) => {
-    if (!model) {
+    if (!ai) {
         // fallback: return mock concerns if no API key
         return [
             'Delayed timeline',
@@ -775,9 +774,11 @@ const extractTopConcerns = async (comments: any[]) => {
                 Respond with a JSON array of short phrases, no extra text.
                 Comment: """${text}"""
             `;
-            const aiResult = await model.generateContent(prompt);
-            const response = aiResult.response
-                .text()
+            const aiResult = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+            const response = (aiResult.text || '')
                 .replace(/```(json)?/g, '')
                 .replace(/```/g, '')
                 .trim();
@@ -804,7 +805,7 @@ const extractTopConcerns = async (comments: any[]) => {
  * Extract top praises from comments using AI (improved: aggregate per comment)
  */
 const extractTopPraises = async (comments: any[]) => {
-    if (!model) {
+    if (!ai) {
         // fallback: return mock praises if no API key
         return [
             'Efficient work',
@@ -823,9 +824,11 @@ const extractTopPraises = async (comments: any[]) => {
                 Respond with a JSON array of short phrases, no extra text.
                 Comment: """${text}"""
             `;
-            const aiResult = await model.generateContent(prompt);
-            const response = aiResult.response
-                .text()
+            const aiResult = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+            const response = (aiResult.text || '')
                 .replace(/```(json)?/g, '')
                 .replace(/```/g, '')
                 .trim();
